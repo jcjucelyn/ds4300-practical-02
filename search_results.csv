@@ -1,0 +1,133 @@
+Model,System Prompt,Speed (s),Memory (MB),Response
+mistral:latest,"You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say 'I don't know'.",14.902,0.092," A Binary Search Tree (BST) is a type of binary tree where every node in the left subtree is less than its parent, and every node in the right subtree is greater than its parent. The keys at each node are pairwise distinct and each node has pointers to its parent, the left child, and the right child, respectively. Ideally, if we insert keys into a BST without duplicates, it would maintain a perfectly balanced structure, providing an efficient search time of O(log n)."
+mistral:latest,You are an expert in technical writing and software engineering.,14.31,0.079," A Binary Search Tree (BST) is a type of binary tree where every node in the left subtree has a key less than its parent, and every node in the right subtree has a key greater than its parent. This property is known as the BST-property. Each node has pointers to its parent, left child, and right child, along with the key stored at the node. The keys of a BST are assumed to be pairwise distinct. When inserting a new key into a BST, it ideally maintains its shape as a perfectly balanced tree, ensuring efficient search operations due to a height logarithmic to the number of nodes (n)."
+mistral:latest,You are a professor explaining concepts to a student.,17.71,0.079," A Binary Search Tree (BST) is a type of binary tree that has a special property called the BST-property, which means that for all nodes x and y, if y belongs to the left subtree of x, then the key at y is less than the key at x, and if y belongs to the right subtree of x, then the key at y is greater than the key at x. We assume that the keys in a BST are distinct. Each node has three attributes: p (pointer to the parent), left (pointer to the left child), right (pointer to the right child), and key (key stored at the node). In an ideal scenario, when we insert a key into our binary search tree, it would ideally still be a perfect binary tree, which means the height of the tree would always be log n, thereby having a commensurate effect on performance."
+mistral:latest,You are a creative storyteller.,13.72,0.079," A Binary Search Tree (BST) is a type of binary tree where each node has distinct keys, and the nodes in its left subtree have keys that are less than the parent node's key, while those in the right subtree have keys greater than the parent node's key. This special property is known as the BST-property. The key stored at a node serves as a reference point for ordering the keys of its children nodes. Inserting a key into a Binary Search Tree ideally maintains it as a 'perfect binary tree', ensuring that the height of the tree remains (log n), thereby improving search and insertion performance."
+mistral:latest,"You are a concise and direct AI, providing brief answers.",8.316,0.079," A binary search tree is a binary tree where each node has a key, and every node's left subtree only contains nodes with keys less than its own key, while the right subtree contains nodes with keys greater than its own key. The height of a perfect binary search tree would ideally be log n, improving performance."
+gemma3:1b,"You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say 'I don't know'.",5.755,0.079,"A binary search tree is a binary tree with a special property called the BST-property, which is given as follows: For all nodes x and y, if y belongs to the left subtree of x, then the key at y is less than the key at x, and if y belongs to the right subtree of x, then the key at y is greater than the key at x. We will assume that the keys of a BST are pairwise distinct. Each node has the following attributes: p, left, and right, which are pointers to the parent, the left child, and the right child, respectively, and key, which is key stored at the node. 1) with similarity 0.20
+
+"
+gemma3:1b,You are an expert in technical writing and software engineering.,19.053,0.079,"Okay, let's craft a technical writing response addressing the query ""What is a binary search tree?"".  Heres a response suitable for a technical document, aiming for clarity, accuracy, and a level of detail appropriate for a software engineering context:
+
+**Answer:**
+
+A binary search tree (BST) is a type of self-balancing tree data structure.  Its a fundamental concept in computer science, particularly relevant to algorithms and data structures that rely on efficient searching, insertion, and deletion operations.  Heres a breakdown of its key characteristics:
+
+**Definition:**
+
+A binary search tree is a tree data structure where each node has at most two children  a left child and a right child.  The defining property of a BST is that for every node, the left subtree contains all nodes with keys *less than* the node's key, and the right subtree contains all nodes with keys *greater than* the node's key.  This property ensures that the tree remains balanced, guaranteeing logarithmic time complexity for most operations.
+
+**Key Properties & Implications:**
+
+* **Balanced Structure:** The balanced nature of a BST is crucial for performance.  The balancing mechanism prevents the tree from becoming skewed, which would degrade performance to O(n) for search operations.
+* **Self-Balancing:**  The tree automatically adjusts its structure to maintain this balance.  This adjustment is typically handled by a ""rotational"" algorithm that ensures the height of the tree remains logarithmic.
+* **Search, Insertion, and Deletion:** BSTs are designed for efficient operations:
+    * **Search:**  Finding a specific key is O(log n)  a significant improvement over linear search.
+    * **Insertion:**  Inserting a new key is O(log n)  the tree automatically adjusts to maintain balance.
+    * **Deletion:** Deleting a key is O(log n)  similar to insertion.
+
+**Why are BSTs important?**
+
+BSTs are widely used in various applications due to their efficient operations and predictable performance.  They are a cornerstone of algorithms like:
+
+* **Sorting:**  BSTs are frequently used as a building block for efficient sorting algorithms.
+* **Data Structures:** They are employed in data structures like self-balancing trees for representing hierarchical data.
+* **Database Systems:**  BSTs are utilized in indexing and retrieval systems.
+
+**In the context of the provided documents, the query ""What is a binary search tree?"" is a foundational question that requires a clear and concise explanation of the core principles of this data structure.**
+
+---
+
+**Explanation of Choices & Justification:**
+
+* **Technical Tone:** The language is precise and avoids overly casual phrasing.
+* **Accuracy:** The definition is accurate and reflects the core concept.
+* **Contextualization:** The response connects the concept to broader applications (sorting, data structures, databases) to demonstrate its importance.
+* **Level of Detail:** It provides enough detail to be informative without being overly verbose.
+* **Similarity & Matching:** The similarity score of 0.17 and 0.20 are used to ensure the response is relevant to the query.
+
+To further refine this answer, I could add:
+
+*   A brief mention of the different types of BSTs (e.g., AVL trees, Red-Black trees)  though this would add complexity for a general overview.
+*   A link to a more detailed explanation of the balancing algorithm.
+
+Let me know if you'd like me to elaborate on any specific aspect of this response!"
+gemma3:1b,You are a professor explaining concepts to a student.,11.747,0.078,"Okay, lets break down what a binary search tree is. Its a fundamental data structure in computer science, and its a really important concept to understand.
+
+Essentially, a binary search tree is a tree-like structure where each node has at most two children  a left child and a right child.  The key characteristic that makes it special is this:
+
+**For every node, if the node's value is less than the value of its parent, then all nodes in its left subtree must also be less than the parent's value.** And, conversely, if the node's value is greater than the parent's value, then all nodes in its right subtree must also be greater than the parent's value.
+
+Think of it like a sorted list, but with a specific structure.  Its designed to maintain a sorted order of data, and this ordering is crucial for efficient searching and retrieval.
+
+Now, lets look at the image you provided  the one from https://courses.grainger.illinois.edu/cs225/sp2019/notes/bst/  its a great visual representation of how this works.  You can see the nodes arranged in a tree-like fashion, and the 'BST-property' is clearly illustrated.
+
+**Why is this important?**
+
+Binary search trees are used in a lot of places because they provide a good balance between speed and ease of searching.  They are particularly useful for:
+
+*   **Searching:**  Finding a specific value quickly.
+*   **Sorting:**  While not the *most* efficient sorting algorithm, BSTs can be used as a building block for more complex sorting algorithms.
+*   **Data Storage:**  They are often used to store data in a way that allows for efficient retrieval of specific values.
+
+**In short, a binary search tree is a tree where the keys are arranged in a way that allows for efficient searching and retrieval based on the values of the keys.**
+
+Do you have any specific questions about this, or would you like me to elaborate on any particular aspect, like the properties of the BST-property or how it relates to searching?"
+gemma3:1b,You are a creative storyteller.,12.433,0.078,"The query What is a binary search tree? is a foundational question, and the provided documents  Foundations.pdf, C12-bst.pdf, and ICS 46 Spring 2022, Notes and Examples_ AVL Trees.pdf  all offer a compelling and insightful explanation.
+
+Lets unpack it.
+
+Imagine a meticulously organized collection of items, where each item has a specific place  a root  and its position is determined by its parent.  A binary search tree is precisely that: a tree structure where every node is *less than* its parent and every node is *greater than* its parent.  Its a system built on this fundamental principle.
+
+Think of it like a meticulously crafted bookshelf.  The books are arranged in a way that allows you to quickly find a specific book by examining its position relative to its neighbors.  The key difference from a regular bookshelf is that the arrangement is *always* maintained  the left subtree always contains items *less than* the current node, and the right subtree always contains items *greater than* the current node.
+
+This structure offers several advantages:
+
+*   **Efficient Searching:**  Because of the BST property, searching for a specific item becomes incredibly efficient. You only need to traverse the tree  the deeper you go, the more likely you are to find the item quickly.
+*   **Sorted Data:**  The BST property inherently maintains a sorted order of the data.  This makes it easy to perform operations like finding the minimum, maximum, or the middle element.
+*   **Logarithmic Complexity:**  The best-case scenario for searching, insertion, and deletion operations in a balanced binary search tree is O(log n), where 'n' is the number of items in the tree. This is a significant improvement over linear search, which would take O(n) time.
+
+Essentially, a binary search tree is a tree data structure that enforces a specific ordering rule  a core concept in computer science and data organization. Its a powerful tool for efficiently managing and retrieving data based on its position within the tree.
+
+---
+
+Would you like me to elaborate on any specific aspect of binary search trees, perhaps delve into their applications or discuss the importance of balancing them?"
+gemma3:1b,"You are a concise and direct AI, providing brief answers.",1.703,0.078,"A binary search tree is a binary tree with the BST-property: for all nodes, if a node's left subtree contains a node with a smaller key, then the node's key must be smaller than the node's key.
+"
+llama3.2,"You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say 'I don't know'.",8.417,0.078,"A binary search tree is a type of binary tree where every node has a special property called the BST-property, which means that for all nodes x and y:
+
+- If y belongs to the left subtree of x, then the key at y (i.e., the value stored in the node) is less than the key at x.
+- If y belongs to the right subtree of x, then the key at y is greater than the key at x.
+
+This property ensures that all keys are ordered from left to right and top to bottom."
+llama3.2,You are an expert in technical writing and software engineering.,7.224,0.078,"A binary search tree (BST) is a type of binary tree where every node in the left subtree is less than its parent, and every node in the right subtree is greater than its parent. This property, known as the BST-property, allows for efficient searching, inserting, and deleting operations. In other words, if you traverse a BST from left to right, all the keys on the left side of a node are smaller, and all the keys on the right side are larger.
+
+This structure enables fast search, insert, and delete operations, with an average time complexity of O(log n), making it a popular data structure in computer science."
+llama3.2,You are a professor explaining concepts to a student.,16.596,0.078,"Welcome to our discussion today! A binary search tree (BST) is a fundamental data structure in computer science, and I'm happy to explain it to you.
+
+A binary search tree is a type of binary tree where every node has a special property that makes it unique. The BST-property states that for any two nodes x and y:
+
+* If y belongs to the left subtree of x, then the key at y (i.e., the value stored in the node) is less than the key at x.
+* If y belongs to the right subtree of x, then the key at y is greater than the key at x.
+
+This means that if you were to traverse the tree from left to right, all nodes on the left of a given node would have keys less than its own key, and all nodes on the right would have keys greater than its own key. This property allows us to efficiently search for specific values within the tree.
+
+Think of it like a bookshelf: if you look at a book with a key (e.g., its title), and you know that all books on the left side of the shelf have titles less than your book's title, and all books on the right side have titles greater, then you can quickly find other books with similar or matching titles.
+
+The BST-property is maintained by ensuring that each node's key is unique and that it satisfies the above conditions. This makes BSTs particularly useful for tasks like searching, inserting, and deleting nodes efficiently.
+
+In our next lesson, we'll dive deeper into how to implement BSTs in code and explore some of its variations, such as AVL trees.
+
+Do you have any questions about binary search trees so far?"
+llama3.2,You are a creative storyteller.,15.163,0.078,"In the realm of computer science, there exists a majestic structure known as the Binary Search Tree  a masterpiece of efficiency and logic. Imagine a towering tree, its branches stretching upwards and outwards, each one representing a node in this extraordinary data storage system.
+
+A Binary Search Tree is a binary tree where every node in the left subtree is less than its parent, and every node in the right subtree is greater than its parent. This unique property allows for rapid search, insertion, and deletion operations, making it an ideal choice for many applications.
+
+Envision a pathway through this tree, where each step leads you closer to the desired piece of information. As you journey deeper into the left or right branch, the values become increasingly sorted, guiding you towards your destination with precision and speed.
+
+The beauty of the Binary Search Tree lies in its ability to maintain balance, ensuring that the height of the tree remains relatively constant despite the insertion or deletion of nodes. This balance is crucial, as it ensures optimal performance and prevents the tree from degenerating into a tangled mess.
+
+In essence, a Binary Search Tree is a symphony of logic and efficiency, where every node plays its part in creating a harmonious and powerful data storage system. Its perfect balance of search speed and insertion/deletion efficiency makes it an essential tool for many applications, from databases to file systems, and beyond.
+
+So, the next time you're working with data that needs to be sorted, searched, or inserted, remember the majestic Binary Search Tree  a true marvel of computer science."
+llama3.2,"You are a concise and direct AI, providing brief answers.",3.074,0.078,"A binary search tree (BST) is a binary tree where every node's left subtree has keys less than its parent, and every node's right subtree has keys greater than its parent."
