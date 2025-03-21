@@ -18,10 +18,12 @@ import json
 redis_client = redis.Redis(host="localhost", port=6380, db=0)
 
 # Initialize PyMongo connection
+CONNECTION_STR = "mongodb+srv://jujoc:4300mongoJ@cluster0.dhzls.mongodb.net/"
 mongo_client = MongoClient(
-    "mongodb://jocelyn:abc123@localhost:27018/"
+    CONNECTION_STR
+    # "mongodb://jocelyn:abc123@localhost:27018/"
 )
-db = mongo_client["ds4300-mongodb"]
+db = mongo_client["4300-pracB"]
 mongo_collection = db["mongoCollection"]
 
 # Initialize Chroma connection
@@ -74,12 +76,6 @@ def clear_store(store_type="redis"):
     else:
         print(f"Invalid store type: {store_type}. Must be one of: redis, chroma, mongo")
 
-
-# # Be able to access chroma from a different file
-# def get_chroma_collection():
-#     print("check: ", chroma_client.get_collection(name="chromaCollection").count())
-#     collection = chroma_client.get_collection(name="chromaCollection")
-#     return collection
 
 # Create an HNSW index in Redis
 def create_hnsw_index():
@@ -253,6 +249,14 @@ def process_pdfs(data_dir, chunk_size, overlap, csv_filename, collection):
                             collection="chroma"
                         )
                         all_docs.append(emb_doc)
+                    else: # collection == "mongo"
+                        store_embedding(
+                            file=file_name,
+                            page=str(page_num),
+                            chunk=str(chunk),  # Storing full chunk instead of index
+                            embedding=embedding,
+                            collection="mongo"
+                        )
 
                 # Collect all chunks for the query later
                 all_chunks.extend(chunks)
