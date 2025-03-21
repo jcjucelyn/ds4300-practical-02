@@ -9,12 +9,15 @@ import time
 import tracemalloc
 import gc
 import csv
+import chromadb
+# from ingest import get_chroma_collection
 
 from torch.backends.cudnn import benchmark
 
 # Initialize models
 # embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 redis_client = redis.StrictRedis(host="localhost", port=6380, decode_responses=True)
+chroma_client = chromadb.Client()
 
 VECTOR_DIM = 768
 INDEX_NAME = "embedding_index"
@@ -36,68 +39,124 @@ SYSTEM_PROMPT_VARIATIONS = [
 ]
 
 
-def get_embedding(text: str, model: str = "nomic-embed-text") -> list:
+# Generate an embedding using nomic-embed-text, all-MiniLM-L6-v2, or all-mpnet-base-v2
+def get_embedding(text: str, model: str="nomic-embed-text") -> list:
 
-    response = ollama.embeddings(model=model, prompt=text)
+    if model=="nomic-embed-text":
+        response = ollama.embeddings(model=model, prompt=text)
+        
+    else:
+        response = SentenceTransformer(model)
+
+    # return response.encode(text)
     return response["embedding"]
 
 
-def search_embeddings(query, top_k=3):
+def search_embeddings(query, emb_type="nomic-embed-text", collection="redis", top_k=3):
 
-    query_embedding = get_embedding(query)
+    query_embedding = get_embedding(text=query, model=emb_type)
 
-    # Convert embedding to bytes for Redis search
-    query_vector = np.array(query_embedding, dtype=np.float32).tobytes()
+    if collection== "redis":    
 
-    try:
-        # Construct the vector similarity search query
-        # Use a more standard RediSearch vector search syntax
-        # q = Query("*").sort_by("embedding", query_vector)
+        # Convert embedding to bytes for Redis search
+        query_vector = np.array(query_embedding, dtype=np.float32).tobytes()
 
-        q = (
-            Query("*=>[KNN 5 @embedding $vec AS vector_distance]")
-            .sort_by("vector_distance")
-            .return_fields("id", "file", "page", "chunk", "vector_distance")
-            .dialect(2)
-        )
+        try:
+            # Construct the vector similarity search query
+            # Use a more standard RediSearch vector search syntax
+            # q = Query("*").sort_by("embedding", query_vector)
 
-        # Perform the search
-        results = redis_client.ft(INDEX_NAME).search(
-            q, query_params={"vec": query_vector}
-        )
+            q = (
+                Query("*=>[KNN 5 @embedding $vec AS vector_distance]")
+                .sort_by("vector_distance")
+                .return_fields("id", "file", "page", "chunk", "vector_distance")
+                .dialect(2)
+            )
 
-        # Handle case where no results are found
-        if not results.docs:
+            # Perform the search
+            results = redis_client.ft(INDEX_NAME).search(
+                q, query_params={"vec": query_vector}
+            )
+
+            # Handle case where no results are found
+            if not results.docs:
+                return []
+
+            # Transform results into the expected format
+            top_results = [
+                {
+                    "file": result.file,
+                    "page": result.page,
+                    "chunk": result.chunk,
+                    "similarity": result.vector_distance,
+                }
+                for result in results.docs
+            ][:top_k]
+
+            # Print results for debugging
+            # for result in top_results:
+            #     print(
+            #         f"---> File: {result['file']}, Page: {result['page']}, Chunk: {result['chunk']}"
+            #     )
+
+            return top_results
+
+        except Exception as e:
+            print(f"Search error: {e}")
             return []
+        
+    elif collection=="chroma":
+        try:
+            # get collection
+            # chroma_collection = chroma_client.get_collection(name="chromaCollection")
+            chroma_collection = get_chroma_collection()
+            print("cc:", chroma_collection.count())
 
-        # Transform results into the expected format
-        top_results = [
-            {
-                "file": result.file,
-                "page": result.page,
-                "chunk": result.chunk,
-                "similarity": result.vector_distance,
-            }
-            for result in results.docs
-        ][:top_k]
+            # extract results
+            results = chroma_collection.query(
+                query_embeddings=query_embedding,
+                n_results=top_k
+            )
 
-        # Print results for debugging
-        # for result in top_results:
-        #     print(
-        #         f"---> File: {result['file']}, Page: {result['page']}, Chunk: {result['chunk']}"
-        #     )
+            print("results:", results)
 
-        return top_results
+            # Handle case where no results are found
+            if not results["documents"]:
+                return []
+            elif results["documents"] == [[]]:
+                return []
+            
+            # Transform results into the expected format
+            else:
+                top_results = [
+                    {
+                        "file": result.get("file", "Unknown file"),
+                        "page": result.get("page", "Unknown page"),
+                        "chunk": result.get("chunk", "Unknown chunk"),
+                        "similarity": result.get("score", 0),
+                    }
+                    for result in results["documents"]
+                ][:top_k]
 
-    except Exception as e:
-        print(f"Search error: {e}")
-        return []
+                return top_results
+
+
+        except Exception as e:
+            print(f"Search error: {e}")
+            return []
+    elif collection=="mongo":
+        try:
+            pass
+        except Exception as e:
+            print(f"Search error: {e}")
+            return []
+    
 
 
 def generate_rag_response(query, context_results, model_name="mistral:latest", system_prompt=SYSTEM_PROMPT_VARIATIONS[0]):
     # Handle case where no relevant context is found
     if not context_results:
-        return "I couldn't find relevant information. Try rephrasing your query."
+        return "I couldn't find relevant information. Try rephrasing your query.", 0, 0
 
     # Prepare context string
     context_str = ""
@@ -216,8 +275,9 @@ def interactive_search():
         if query.lower() == "exit":
             break
 
-        # Search for relevant embeddings
-        context_results = search_embeddings(query)
+        # Search for relevant embeddings given choice of vector db
+        collection_choice = input("\nWhat vector database would you like to use? (redis/chroma/mongo): ").strip().lower()
+        context_results = search_embeddings(query, collection=collection_choice)
 
         benchmark_choice = input(
             "\nDo you want to compare multiple LLMs (mistral:latest, gemma3:1b, and llama3.2) and/or system prompts? (yes/no): ").strip().lower()
