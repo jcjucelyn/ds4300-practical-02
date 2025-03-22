@@ -21,19 +21,21 @@ redis_client = redis.Redis(host="localhost", port=6380, db=0)
 CONNECTION_STR = "mongodb+srv://jujoc:4300mongoJ@cluster0.dhzls.mongodb.net/"
 mongo_client = MongoClient(
     CONNECTION_STR
-    # "mongodb://jocelyn:abc123@localhost:27018/"
 )
 db = mongo_client["4300-pracB"]
 mongo_collection = db["mongoCollection"]
 
 # Initialize Chroma connection
 chroma_client = chromadb.Client()
-chroma_collection = chroma_client.create_collection(name="chromaCollection")
+chroma_collection = chroma_client.create_collection(name="chromaCollection",
+                                                    get_or_create=True)
+
 
 VECTOR_DIM = 768
 INDEX_NAME = "embedding_index"
 DOC_PREFIX = "doc:"
 DISTANCE_METRIC = "COSINE"
+EMBEDDING_TYPE = "nomic-embed-text" 
 
 # Define chunking strategies (Chunk Size, Overlap)
 CHUNKING_STRATEGIES = [
@@ -62,11 +64,14 @@ def clear_store(store_type="redis"):
             chroma_client.delete_collection("chromaCollection")
         except Exception as e:
             print(f"Error deleting Chroma store: {e}")
-        
-        # Recreate an empty collection
-        chroma_client.create_collection(name="chromaCollection")
         print("Chroma store cleared.")
-
+        # Recreate an empty collection
+        try:
+            chroma_client.create_collection(name="chromaCollection")
+            print("Chroma store re-initialized.")
+        except Exception as e:
+            print(f"Error re-creating Chroma collection: {e}")
+            
     # drop mongo database
     elif store_type == "mongo":
         print("Clearing existing Mongo store...")
@@ -95,13 +100,14 @@ def create_hnsw_index():
 
 
 # Generate an embedding using specified model
-def get_embedding(text: str, model: str="nomic-embed-text") -> list:
+def get_embedding(text: str, model: str=EMBEDDING_TYPE) -> list:
 
     if model=="nomic-embed-text":
         response = ollama.embeddings(model=model, prompt=text)
         
     else:
-        response = SentenceTransformer(model)
+        mod = SentenceTransformer(model)
+        response = mod.encode(text)
 
     # return response.encode(text)
     return response["embedding"]
@@ -146,6 +152,8 @@ def store_embedding(file: str, page: str, chunk: str, embedding: list, collectio
             chroma_collection = chroma_client.create_collection(name="chromaCollection")
         else:
             chroma_collection = chroma_client.get_collection(name="chromaCollection")
+            print("Chroma Collection Get")
+
         
         # add to chroma collection
         chroma_collection.add(
@@ -208,7 +216,7 @@ def split_text_into_chunks(text, chunk_size=300, overlap=50):
 
 
 # Process all PDF files in a given directory
-def process_pdfs(data_dir, chunk_size, overlap, csv_filename, collection):
+def process_pdfs(data_dir, chunk_size, overlap, csv_filename, coll, emb=EMBEDDING_TYPE):
     start_time = time.time()
     tracemalloc.start()
 
@@ -231,16 +239,16 @@ def process_pdfs(data_dir, chunk_size, overlap, csv_filename, collection):
                 total_chunks += len(chunks)
 
                 for chunk_index, chunk in enumerate(chunks):
-                    embedding = get_embedding(chunk)
-                    if collection == "redis":
-                        store_embedding(
-                            file=file_name,
-                            page=str(page_num),
-                            chunk=str(chunk),  # Storing full chunk instead of index
-                            embedding=embedding,
-                            collection="redis"
-                        )
-                    elif collection == "chroma":
+                    embedding = get_embedding(chunk, emb)
+                    # if collection == "redis":
+                    #     store_embedding(
+                    #         file=file_name,
+                    #         page=str(page_num),
+                    #         chunk=str(chunk),  # Storing full chunk instead of index
+                    #         embedding=embedding,
+                    #         collection="redis"
+                    #     )
+                    if coll == "chroma":
                         emb_doc = store_embedding(
                             file=file_name,
                             page=str(page_num),
@@ -249,13 +257,13 @@ def process_pdfs(data_dir, chunk_size, overlap, csv_filename, collection):
                             collection="chroma"
                         )
                         all_docs.append(emb_doc)
-                    else: # collection == "mongo"
+                    else: # collection == "mongo" or "redis"
                         store_embedding(
                             file=file_name,
                             page=str(page_num),
                             chunk=str(chunk),  # Storing full chunk instead of index
                             embedding=embedding,
-                            collection="mongo"
+                            collection=coll
                         )
 
                 # Collect all chunks for the query later
@@ -265,40 +273,29 @@ def process_pdfs(data_dir, chunk_size, overlap, csv_filename, collection):
             total_files += 1
 
     # Save chroma collection to JSON
-    if collection == "chroma":
+    if coll == "chroma":
         with open("chromaCollection.json", "w") as f:
             json.dump(all_docs, f, indent=4)
         print("Chroma Collection saved to chromaCollection.json")
 
-    # After processing all documents for this chunking strategy, query Redis once
-    if collection == "redis":
-        answer = query("What is a binary search tree?", "redis")  # Query once for the combined text
-    elif collection == "chroma":
-        answer = query("What is a binary search tree?", "chroma")
-    else:
-        answer = query("What is a binary search tree?", "mongo")
+    # After processing all documents for this chunking strategy, query db once
+    # if coll == "redis":
+    answer = query("What is a binary search tree?", coll)  # Query once for the combined text
+    # elif collection == "chroma":
+    #     answer = query("What is a binary search tree?", "chroma")
+    # else:
+    #     answer = query("What is a binary search tree?", "mongo")
     elapsed_time = time.time() - start_time
     current_memory, peak_memory = tracemalloc.get_traced_memory()
     tracemalloc.stop()
 
     # Store the result for this chunking strategy, including speed and memory
-    store_query_result(chunk_size, overlap, elapsed_time, peak_memory / 1e6, total_chunks, answer, csv_filename)
+    store_query_result(chunk_size=chunk_size, overlap=overlap, speed=elapsed_time, peak_memory=peak_memory / 1e6, total_chunks=total_chunks, answer=answer, db=coll, csv_filename=csv_filename)
 
     return chunk_size, overlap, elapsed_time, peak_memory / 1e6, total_chunks
 
-def mongo_coll(db_name, coll):
-    """
-    Mongo client connection
-    """
-    mongo_client = MongoClient(
-    "mongodb://jocelyn:abc123@localhost:27018/"
-    )
-    db = mongo_client[db_name]
-    mongo_collection = db[coll]
 
-    return mongo_collection
-
-def store_query_result(chunk_size, overlap, speed, peak_memory, total_chunks, answer, csv_filename):
+def store_query_result(chunk_size, overlap, speed, peak_memory, total_chunks, answer, db, csv_filename, emb_type=EMBEDDING_TYPE):
     """
     Store the query result for a given chunking strategy in a CSV file.
     """
@@ -314,13 +311,17 @@ def store_query_result(chunk_size, overlap, speed, peak_memory, total_chunks, an
 
         # Write header only if the file doesn't exist
         if not file_exists:
-            writer.writerow(["Chunk Size", "Overlap", "Speed (s)", "Memory (MB)", "Total Chunks", "Resulting Documents"])
+            writer.writerow(["Vector DB", "Embedding Type", "Chunk Size", "Overlap", "Speed (s)", "Memory (MB)", "Total Chunks", "Resulting Documents"])
 
         # Write the result row
-        writer.writerow([chunk_size, overlap, speed, peak_memory, total_chunks, answer])
+        writer.writerow([db, emb_type, chunk_size, overlap, speed, peak_memory, total_chunks, answer])
 
 
 def query(query_text: str, query_type = "redis"):
+    # Set default result
+    result = "No results found"
+    embedding = get_embedding(query_text)
+
     if query_type == "redis":
         q = (
             Query("*=>[KNN 5 @embedding $vec AS vector_distance]")
@@ -329,61 +330,100 @@ def query(query_text: str, query_type = "redis"):
             .dialect(2)
         )
         embedding = get_embedding(query_text)
+
         res = redis_client.ft(INDEX_NAME).search(
             q, query_params={"vec": np.array(embedding, dtype=np.float32).tobytes()}
         )
         # print(res.docs)
 
-        result = "No results found"
         if res.docs:
             result = "\n".join([f"{doc.id} - {doc.vector_distance}" for doc in res.docs])
             print(result)
         return result
     elif query_type == "chroma":
+        if "chromaCollection" not in chroma_client.list_collections():
+            print(f"Collection: chromaCollection does not exist")
+            chroma_collection = chroma_client.create_collection(name="chromaCollection")
+        else:
+            chroma_collection = chroma_client.get_collection(name="chromaCollection")
+            print("Chroma Collection Get")
+
         embedding = get_embedding(query_text)
+
         results = chroma_collection.query(
                 query_embeddings=embedding,
+                n_results=5
             )
-        return results
-    else:
-        pass
+        print(results)
         
+        if results.get["documents"]:
+            result = "\n".join([
+                f"{doc} - {meta}"
+                for doc, meta in zip(results.get["documents"], results.get["metadatas"])])
+            # result = "\n".join([(f"Document: {doc} - {md}") for doc in results['documents']])
+        return result
+    else:
+        candidates = mongo_collection.count_documents({})
+        results = db.mongoCollection.aggregate([
+            {
+            "$vectorSearch": {
+                "index": "pracB_searchindex",
+                "limit": 5,
+                "numCandidates": candidates,
+                "path": "embedding",
+                "queryVector": embedding
+            }
+        },
+        {
+            "$project": {
+                "_id": 1,
+                "file": 1,
+                "page":1,
+                "chunk":1,
+                "similarity": {"$meta":"vectorSearchScore"}
+                        
+            }
+        }])
+        
+        return results
 
 
 def main():
     # Set up
     results = []
-    csv_filename = "chunking_results.csv"
 
-    use_collection = "mongo"
-    clear_store(use_collection)
+    # use_collection = "redis"
+    for use_collection in ["chroma"]:
+        for EMBEDDING_TYPE in ["nomic-embed-text", "all-MiniLM-L6-v2", "all-mpnet-base-v2"]:
+            csv_filename = f"{use_collection}_{EMBEDDING_TYPE}_comp_embedding.csv"
 
-    if use_collection == "redis":
-        create_hnsw_index()
-        for chunk_size, overlap in CHUNKING_STRATEGIES:
-            chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("../Files/", chunk_size, overlap, csv_filename, collection="redis")
-            results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
+            clear_store(use_collection)
 
-    elif use_collection == "chroma":
-        # chroma_collection = chroma_client.create_collection(name="chromaCollection")
-        for chunk_size, overlap in CHUNKING_STRATEGIES:
-            chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("../Files/", chunk_size, overlap, csv_filename, collection="chroma")
-            results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
-        
-    else:
-        for chunk_size, overlap in CHUNKING_STRATEGIES:
-            chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("../Files/", chunk_size, overlap, csv_filename, collection="mongo")
-            results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
+            if use_collection == "redis":
+                create_hnsw_index()
+                for chunk_size, overlap in CHUNKING_STRATEGIES:
+                    chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("../Files/", chunk_size, overlap, csv_filename, coll="redis", emb=EMBEDDING_TYPE)
+                    results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
 
-    # results = []
-    # csv_filename = "chunking_results.csv"
+            # elif use_collection == "chroma":
+            else:
+                for chunk_size, overlap in CHUNKING_STRATEGIES:
+                    chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("../Files/", chunk_size, overlap, csv_filename, coll=use_collection, emb=EMBEDDING_TYPE)
+                    results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
+                
+            # else:
+            #     for chunk_size, overlap in CHUNKING_STRATEGIES:
+            #         chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("../Files/", chunk_size, overlap, csv_filename, collection="mongo")
+            #         results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
 
-    # for chunk_size, overlap in CHUNKING_STRATEGIES:
-    #     chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("../Files/", chunk_size, overlap, csv_filename, collection=use_collection)
-    #     results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
+            # results = []
+            # csv_filename = "chunking_results.csv"
 
-    print("\n---Done processing PDFs---\n")
-    #query_redis("What do we have in our arsenal?")
+            # for chunk_size, overlap in CHUNKING_STRATEGIES:
+            #     chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("../Files/", chunk_size, overlap, csv_filename, collection=use_collection)
+            #     results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
+
+            print("\n---Done processing PDFs---\n")
 
 
 if __name__ == "__main__":
