@@ -17,13 +17,16 @@ import json
 # Initialize Redis connection
 redis_client = redis.Redis(host="localhost", port=6380, db=0)
 
-# # Initialize PyMongo connection
-# CONNECTION_STR = f"mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/"
-# mongo_client = MongoClient(
-#     CONNECTION_STR
-# )
-# db = mongo_client["4300-pracB"]
-# mongo_collection = db["mongoCollection"]
+# Initialize PyMongo connection
+user = "****"
+pwd = "****"
+
+CONNECTION_STR = f"mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/" 
+mongo_client = MongoClient(
+    CONNECTION_STR
+)
+db = mongo_client["4300-pracB"]
+mongo_collection = db["mongoCollection"]
 
 # Initialize Chroma connection
 chroma_client = chromadb.Client()
@@ -240,14 +243,7 @@ def process_pdfs(data_dir, chunk_size, overlap, csv_filename, coll, emb=EMBEDDIN
 
                 for chunk_index, chunk in enumerate(chunks):
                     embedding = get_embedding(chunk, emb)
-                    # if collection == "redis":
-                    #     store_embedding(
-                    #         file=file_name,
-                    #         page=str(page_num),
-                    #         chunk=str(chunk),  # Storing full chunk instead of index
-                    #         embedding=embedding,
-                    #         collection="redis"
-                    #     )
+
                     if coll == "chroma":
                         emb_doc = store_embedding(
                             file=file_name,
@@ -335,60 +331,17 @@ def query(query_text: str, emb=EMBEDDING_TYPE):
         result = "\n".join([f"{doc.id} - {doc.vector_distance}" for doc in res.docs])
         print(result)
     return result
-    # elif query_type == "chroma":
-    #     if "chromaCollection" not in chroma_client.list_collections():
-    #         print(f"Collection: chromaCollection does not exist")
-    #         chroma_collection = chroma_client.create_collection(name="chromaCollection")
-    #     else:
-    #         chroma_collection = chroma_client.get_collection(name="chromaCollection")
-    #         print("Chroma Collection Get")
-
-    #     embedding = get_embedding(query_text)
-
-    #     results = chroma_collection.query(
-    #             query_embeddings=embedding,
-    #             n_results=5
-    #         )
-    #     print(results)
-        
-    #     if results.get["documents"]:
-    #         result = "\n".join([
-    #             f"{doc} - {meta}"
-    #             for doc, meta in zip(results.get["documents"], results.get["metadatas"])])
-    #         # result = "\n".join([(f"Document: {doc} - {md}") for doc in results['documents']])
-    #     return result
-    # else:
-    #     candidates = mongo_collection.count_documents({})
-    #     results = db.mongoCollection.aggregate([
-    #         {
-    #         "$vectorSearch": {
-    #             "index": "pracB_searchindex",
-    #             "limit": 5,
-    #             "numCandidates": candidates,
-    #             "path": "embedding",
-    #             "queryVector": embedding
-    #         }
-    #     },
-    #     {
-    #         "$project": {
-    #             "_id": 1,
-    #             "file": 1,
-    #             "page":1,
-    #             "chunk":1,
-    #             "similarity": {"$meta":"vectorSearchScore"}
-                        
-    #         }
-    #     }])
-        
-    #     return results
-
 
 def main():
 
+    # Initialize 
     results = []
     csv_filename = "chunking_results.csv"
+
+    # What database you are ingesting the data for
     use_collection = "redis"
 
+    # Iterate through chunks
     for chunk_size, overlap in CHUNKING_STRATEGIES:
         chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("./Files/", chunk_size, overlap, csv_filename, coll=use_collection)
         results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])

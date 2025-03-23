@@ -19,8 +19,10 @@ from pymongo import MongoClient
 # embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 redis_client = redis.StrictRedis(host="localhost", port=6380, decode_responses=True)
 chroma_client = chromadb.Client()
-# Initialize PyMongo connection 
-CONNECTION_STR = "mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/"
+# Initialize PyMongo connection through limited role
+user = "ds4300_staff"
+pwd = "staffStaff4300"
+CONNECTION_STR = f"mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/"
 mongo_client = MongoClient(
     CONNECTION_STR
 )
@@ -45,7 +47,6 @@ SYSTEM_PROMPT_VARIATIONS = [
     "You are a creative storyteller.",
     "You are a concise and direct AI, providing brief answers."
 ]
-
 
 # Generate an embedding using nomic-embed-text, all-MiniLM-L6-v2, or all-mpnet-base-v2
 def get_embedding(text: str, model: str="nomic-embed-text") -> list:
@@ -265,34 +266,47 @@ def get_user_preferences():
     compare_prompts = input("\nDo you want to compare multiple system prompts? (yes/no): ").strip().lower() == "yes"
     if not compare_prompts:
         print("Benchmarking with default system prompt ONLY ('You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say 'I don't know'.').")
-    return compare_models, compare_prompts
+    compare_vdbs = input("\nDo you want to compare multiple vector databases? (yes/no): ").strip().lower() == "yes"
+    if not compare_vdbs:
+        print("Benchmarking with default vector database ONLY ('redis').")
+    compare_embeddings = input("\nDo you want to compare multiple embedding types? (yes/no): ").strip().lower() == "yes"
+    if not compare_prompts:
+        print("Benchmarking with default embedding type ONLY ('nomic-embed-text').")
+
+    return compare_models, compare_prompts, compare_vdbs, compare_embeddings
 
 
-def compare_llms_and_prompts(query, context_results, model_names, compare_models, compare_prompts, output_file="query_results.csv"):
-    """ Compare multiple LLMs and save results to a CSV file."""
+def compare_all(query, context_results, model_names, compare_models, vdb_names, compare_vdbs, embedding_names, compare_embeddings, compare_prompts, output_file="query_results.csv"):
+    """ Compare multiple LLMs, prompts, vector databases, and embedding types and save results to a CSV file."""
 
     # Determine variations based on user choices
     models_to_test = model_names if compare_models else [model_names[0]]
+    vdbs_to_test = vdb_names if compare_vdbs else [vdb_names[0]]
+    embeddings_to_test = embedding_names if compare_embeddings else [embedding_names[0]]
     system_prompts = SYSTEM_PROMPT_VARIATIONS if compare_prompts else [SYSTEM_PROMPT_VARIATIONS[0]]
 
     results = []
 
     for model_name in models_to_test:
         for system_prompt in system_prompts:
-            response, response_time, memory_used = generate_rag_response(
-                query, context_results, model_name, system_prompt
-            )
+            for vdb_name in vdbs_to_test:
+                for embedding_type in embeddings_to_test:
+                    response, response_time, memory_used = generate_rag_response(
+                    query, context_results, model_name, system_prompt
+                )
 
-            results.append({
-                "LLM": model_name,
-                "System Prompt": system_prompt,
-                "Speed (s)": round(response_time, 3),
-                "Memory (MB)": round(memory_used, 3),
-                "Response": response
-            })
+                results.append({
+                    "LLM": model_name,
+                    "Vector DB": vdb_name,
+                    "Embedding Type": embedding_type,
+                    "System Prompt": system_prompt,
+                    "Speed (s)": round(response_time, 3),
+                    "Memory (MB)": round(memory_used, 3),
+                    "Response": response
+                })
 
-            print(f"Tested {model_name} with system prompt '{system_prompt}' "
-              f"in {response_time:.3f}s, using {memory_used:.3f}MB memory.")
+                print(f"Tested {model_name} with system prompt '{system_prompt}' "
+                f"in {response_time:.3f}s, using {memory_used:.3f}MB memory.")
 
     # Check if the output file ends with ".csv"
     if not output_file.endswith(".csv"):
@@ -301,7 +315,7 @@ def compare_llms_and_prompts(query, context_results, model_names, compare_models
 
     # Save results to CSV
     with open(output_file, "w", newline="", encoding="utf-8") as csvfile:
-        fieldnames = ["LLM", "System Prompt", "Speed (s)", "Memory (MB)", "Response"]
+        fieldnames = ["LLM", "Vector DB", "Embedding Type", "System Prompt", "Speed (s)", "Memory (MB)", "Response"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(results)
@@ -359,10 +373,10 @@ def interactive_search():
             "\nDo you want to compare multiple LLMs (mistral:latest, gemma3:1b, and llama3.2) and/or system prompts? (yes/no): ").strip().lower()
 
         if benchmark_choice == "yes":
-            compare_models, compare_prompts = get_user_preferences()
+            compare_models, compare_prompts, compare_vdbs, compare_embeddings = get_user_preferences()
 
             # Check if both compare_models and compare_prompts are 'no'
-            if not compare_models and not compare_prompts:
+            if not compare_models and not compare_prompts and not compare_vdbs and not compare_embeddings:
                 print(
                     "\nYou did not select the proper criteria for comparing multiple LLMs and/or system prompts. One LLM and one prompt will be used instead.")
                 # Execute the else code: select the default LLM and prompt without benchmarking
@@ -380,7 +394,10 @@ def interactive_search():
                     "\nBenchmarking results will be stored in a .csv file for easy comparison. What would you like to name the file? ")
                 # Define models to benchmark
                 models_to_test = ["mistral:latest", "gemma3:1b", "llama3.2"]  # Add more models as needed
-                compare_llms_and_prompts(query, context_results, models_to_test, compare_models, compare_prompts, output_file=filename)
+                embeddings_to_test = ["nomic-embed-text", "all-MiniLM-L6-v2", "all-mpnet-base-v2"]
+                vectordbs_to_test = ["redis", "chroma", "mongo"]
+
+                compare_all(query, context_results, models_to_test, compare_models, vectordbs_to_test, compare_vdbs, embeddings_to_test, compare_embeddings, compare_prompts, output_file=filename)
 
                 # Ask user which model they want for the final response
                 model_name = input(

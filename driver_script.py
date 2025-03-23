@@ -34,14 +34,6 @@ def process_all_interface():
             pass
 
         else:
-            emb_mod = input("\nSelect an embedding model (nomic-embed-text/all-MiniLM-L6-v2/all-mpnet-base-v2/all): ")
-            vec_db = input("\nSelect a vector database (redis/chroma/mongo/all): ")
-            
-            for chunk_size, overlap in CHUNKING_STRATEGIES:
-                chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("../Files/", chunk_size, overlap, csv_filename=CHUNK_CSV, coll=vec_db, emb=emb_mod)
-
-            # Store in list
-            chunk_csv.append([vec_db, emb_mod, chunk_size, overlap, time_taken, memory_used, num_chunks])
 
 
             # if emb_mod == "all":
