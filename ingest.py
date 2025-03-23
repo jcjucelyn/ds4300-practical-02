@@ -18,7 +18,7 @@ import json
 redis_client = redis.Redis(host="localhost", port=6380, db=0)
 
 # Initialize PyMongo connection
-CONNECTION_STR = "mongodb+srv://jujoc:4300mongoJ@cluster0.dhzls.mongodb.net/"
+CONNECTION_STR = "mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/"
 mongo_client = MongoClient(
     CONNECTION_STR
 )
@@ -279,12 +279,8 @@ def process_pdfs(data_dir, chunk_size, overlap, csv_filename, coll, emb=EMBEDDIN
         print("Chroma Collection saved to chromaCollection.json")
 
     # After processing all documents for this chunking strategy, query db once
-    # if coll == "redis":
-    answer = query("What is a binary search tree?", coll)  # Query once for the combined text
-    # elif collection == "chroma":
-    #     answer = query("What is a binary search tree?", "chroma")
-    # else:
-    #     answer = query("What is a binary search tree?", "mongo")
+    answer = query("What is a binary search tree?", redis)  # Query once for the combined text
+   
     elapsed_time = time.time() - start_time
     current_memory, peak_memory = tracemalloc.get_traced_memory()
     tracemalloc.stop()
@@ -317,75 +313,74 @@ def store_query_result(chunk_size, overlap, speed, peak_memory, total_chunks, an
         writer.writerow([db, emb_type, chunk_size, overlap, speed, peak_memory, total_chunks, answer])
 
 
-def query(query_text: str, query_type = "redis"):
+def query(query_text: str):
     # Set default result
     result = "No results found"
     embedding = get_embedding(query_text)
 
-    if query_type == "redis":
-        q = (
-            Query("*=>[KNN 5 @embedding $vec AS vector_distance]")
-            .sort_by("vector_distance")
-            .return_fields("id", "vector_distance")
-            .dialect(2)
-        )
-        embedding = get_embedding(query_text)
+    q = (
+        Query("*=>[KNN 5 @embedding $vec AS vector_distance]")
+        .sort_by("vector_distance")
+        .return_fields("id", "vector_distance")
+        .dialect(2)
+    )
+    embedding = get_embedding(query_text)
 
-        res = redis_client.ft(INDEX_NAME).search(
-            q, query_params={"vec": np.array(embedding, dtype=np.float32).tobytes()}
-        )
-        # print(res.docs)
+    res = redis_client.ft(INDEX_NAME).search(
+        q, query_params={"vec": np.array(embedding, dtype=np.float32).tobytes()}
+    )
+    # print(res.docs)
 
-        if res.docs:
-            result = "\n".join([f"{doc.id} - {doc.vector_distance}" for doc in res.docs])
-            print(result)
-        return result
-    elif query_type == "chroma":
-        if "chromaCollection" not in chroma_client.list_collections():
-            print(f"Collection: chromaCollection does not exist")
-            chroma_collection = chroma_client.create_collection(name="chromaCollection")
-        else:
-            chroma_collection = chroma_client.get_collection(name="chromaCollection")
-            print("Chroma Collection Get")
+    if res.docs:
+        result = "\n".join([f"{doc.id} - {doc.vector_distance}" for doc in res.docs])
+        print(result)
+    return result
+    # elif query_type == "chroma":
+    #     if "chromaCollection" not in chroma_client.list_collections():
+    #         print(f"Collection: chromaCollection does not exist")
+    #         chroma_collection = chroma_client.create_collection(name="chromaCollection")
+    #     else:
+    #         chroma_collection = chroma_client.get_collection(name="chromaCollection")
+    #         print("Chroma Collection Get")
 
-        embedding = get_embedding(query_text)
+    #     embedding = get_embedding(query_text)
 
-        results = chroma_collection.query(
-                query_embeddings=embedding,
-                n_results=5
-            )
-        print(results)
+    #     results = chroma_collection.query(
+    #             query_embeddings=embedding,
+    #             n_results=5
+    #         )
+    #     print(results)
         
-        if results.get["documents"]:
-            result = "\n".join([
-                f"{doc} - {meta}"
-                for doc, meta in zip(results.get["documents"], results.get["metadatas"])])
-            # result = "\n".join([(f"Document: {doc} - {md}") for doc in results['documents']])
-        return result
-    else:
-        candidates = mongo_collection.count_documents({})
-        results = db.mongoCollection.aggregate([
-            {
-            "$vectorSearch": {
-                "index": "pracB_searchindex",
-                "limit": 5,
-                "numCandidates": candidates,
-                "path": "embedding",
-                "queryVector": embedding
-            }
-        },
-        {
-            "$project": {
-                "_id": 1,
-                "file": 1,
-                "page":1,
-                "chunk":1,
-                "similarity": {"$meta":"vectorSearchScore"}
+    #     if results.get["documents"]:
+    #         result = "\n".join([
+    #             f"{doc} - {meta}"
+    #             for doc, meta in zip(results.get["documents"], results.get["metadatas"])])
+    #         # result = "\n".join([(f"Document: {doc} - {md}") for doc in results['documents']])
+    #     return result
+    # else:
+    #     candidates = mongo_collection.count_documents({})
+    #     results = db.mongoCollection.aggregate([
+    #         {
+    #         "$vectorSearch": {
+    #             "index": "pracB_searchindex",
+    #             "limit": 5,
+    #             "numCandidates": candidates,
+    #             "path": "embedding",
+    #             "queryVector": embedding
+    #         }
+    #     },
+    #     {
+    #         "$project": {
+    #             "_id": 1,
+    #             "file": 1,
+    #             "page":1,
+    #             "chunk":1,
+    #             "similarity": {"$meta":"vectorSearchScore"}
                         
-            }
-        }])
+    #         }
+    #     }])
         
-        return results
+    #     return results
 
 
 def main():

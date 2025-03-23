@@ -20,7 +20,7 @@ from pymongo import MongoClient
 redis_client = redis.StrictRedis(host="localhost", port=6380, decode_responses=True)
 chroma_client = chromadb.Client()
 # Initialize PyMongo connection 
-CONNECTION_STR = "mongodb+srv://jujoc:4300mongoJ@cluster0.dhzls.mongodb.net/" # UPDATE <jujoc> with user, and <*****> with pw
+CONNECTION_STR = "mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/"
 mongo_client = MongoClient(
     CONNECTION_STR
     # "mongodb://jocelyn:abc123@localhost:27018/"
