@@ -23,7 +23,6 @@ chroma_client = chromadb.Client()
 CONNECTION_STR = "mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/"
 mongo_client = MongoClient(
     CONNECTION_STR
-    # "mongodb://jocelyn:abc123@localhost:27018/"
 )
 db = mongo_client["4300-pracB"]
 mongo_collection = db["mongoCollection"]

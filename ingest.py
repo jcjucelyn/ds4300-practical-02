@@ -17,13 +17,13 @@ import json
 # Initialize Redis connection
 redis_client = redis.Redis(host="localhost", port=6380, db=0)
 
-# Initialize PyMongo connection
-CONNECTION_STR = "mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/"
-mongo_client = MongoClient(
-    CONNECTION_STR
-)
-db = mongo_client["4300-pracB"]
-mongo_collection = db["mongoCollection"]
+# # Initialize PyMongo connection
+# CONNECTION_STR = f"mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/"
+# mongo_client = MongoClient(
+#     CONNECTION_STR
+# )
+# db = mongo_client["4300-pracB"]
+# mongo_collection = db["mongoCollection"]
 
 # Initialize Chroma connection
 chroma_client = chromadb.Client()
@@ -279,7 +279,7 @@ def process_pdfs(data_dir, chunk_size, overlap, csv_filename, coll, emb=EMBEDDIN
         print("Chroma Collection saved to chromaCollection.json")
 
     # After processing all documents for this chunking strategy, query db once
-    answer = query("What is a binary search tree?", redis)  # Query once for the combined text
+    answer = query("What is a binary search tree?")  # Query once for the combined text
    
     elapsed_time = time.time() - start_time
     current_memory, peak_memory = tracemalloc.get_traced_memory()
@@ -313,7 +313,7 @@ def store_query_result(chunk_size, overlap, speed, peak_memory, total_chunks, an
         writer.writerow([db, emb_type, chunk_size, overlap, speed, peak_memory, total_chunks, answer])
 
 
-def query(query_text: str):
+def query(query_text: str, emb=EMBEDDING_TYPE):
     # Set default result
     result = "No results found"
     embedding = get_embedding(query_text)
@@ -324,7 +324,7 @@ def query(query_text: str):
         .return_fields("id", "vector_distance")
         .dialect(2)
     )
-    embedding = get_embedding(query_text)
+    embedding = get_embedding(query_text, emb)
 
     res = redis_client.ft(INDEX_NAME).search(
         q, query_params={"vec": np.array(embedding, dtype=np.float32).tobytes()}
@@ -384,41 +384,16 @@ def query(query_text: str):
 
 
 def main():
-    # Set up
+
     results = []
+    csv_filename = "chunking_results.csv"
+    use_collection = "redis"
 
-    # use_collection = "redis"
-    for use_collection in ["chroma"]:
-        for EMBEDDING_TYPE in ["nomic-embed-text", "all-MiniLM-L6-v2", "all-mpnet-base-v2"]:
-            csv_filename = f"{use_collection}_{EMBEDDING_TYPE}_comp_embedding.csv"
+    for chunk_size, overlap in CHUNKING_STRATEGIES:
+        chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("./Files/", chunk_size, overlap, csv_filename, coll=use_collection)
+        results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
 
-            clear_store(use_collection)
-
-            if use_collection == "redis":
-                create_hnsw_index()
-                for chunk_size, overlap in CHUNKING_STRATEGIES:
-                    chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("../Files/", chunk_size, overlap, csv_filename, coll="redis", emb=EMBEDDING_TYPE)
-                    results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
-
-            # elif use_collection == "chroma":
-            else:
-                for chunk_size, overlap in CHUNKING_STRATEGIES:
-                    chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("../Files/", chunk_size, overlap, csv_filename, coll=use_collection, emb=EMBEDDING_TYPE)
-                    results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
-                
-            # else:
-            #     for chunk_size, overlap in CHUNKING_STRATEGIES:
-            #         chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("../Files/", chunk_size, overlap, csv_filename, collection="mongo")
-            #         results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
-
-            # results = []
-            # csv_filename = "chunking_results.csv"
-
-            # for chunk_size, overlap in CHUNKING_STRATEGIES:
-            #     chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("../Files/", chunk_size, overlap, csv_filename, collection=use_collection)
-            #     results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
-
-            print("\n---Done processing PDFs---\n")
+    print("\n---Done processing PDFs---\n")
 
 
 if __name__ == "__main__":
