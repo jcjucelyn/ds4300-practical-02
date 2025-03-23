@@ -35,7 +35,6 @@ def process_all_interface():
 
         else:
 
-
             # if emb_mod == "all":
             #     for emb in all_embs:
             #         if vec_db == "all":
@@ -50,7 +49,7 @@ def process_all_interface():
 
             # # Selected embedding type
             # else:
-            #     pass
+            pass
 
 
     print("Processing completed, and results saved!")

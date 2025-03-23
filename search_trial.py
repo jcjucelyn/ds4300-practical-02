@@ -270,7 +270,7 @@ def get_user_preferences():
     if not compare_vdbs:
         print("Benchmarking with default vector database ONLY ('redis').")
     compare_embeddings = input("\nDo you want to compare multiple embedding types? (yes/no): ").strip().lower() == "yes"
-    if not compare_prompts:
+    if not compare_embeddings:
         print("Benchmarking with default embedding type ONLY ('nomic-embed-text').")
 
     return compare_models, compare_prompts, compare_vdbs, compare_embeddings
@@ -287,23 +287,28 @@ def compare_all(query, context_results, model_names, compare_models, vdb_names, 
 
     results = []
 
+    print("Testing models: ", models_to_test)
+    print("Testing vdbs: ", vdbs_to_test)
+    print("Testing embs: ", embeddings_to_test)
+
     for model_name in models_to_test:
         for system_prompt in system_prompts:
             for vdb_name in vdbs_to_test:
                 for embedding_type in embeddings_to_test:
                     response, response_time, memory_used = generate_rag_response(
                     query, context_results, model_name, system_prompt
-                )
+                    )
 
-                results.append({
-                    "LLM": model_name,
-                    "Vector DB": vdb_name,
-                    "Embedding Type": embedding_type,
-                    "System Prompt": system_prompt,
-                    "Speed (s)": round(response_time, 3),
-                    "Memory (MB)": round(memory_used, 3),
-                    "Response": response
-                })
+                    results.append({
+                        "LLM": model_name,
+                        "Vector DB": vdb_name,
+                        "Embedding Type": embedding_type,
+                        "System Prompt": system_prompt,
+                        "Speed (s)": round(response_time, 3),
+                        "Memory (MB)": round(memory_used, 3),
+                        "Response": response
+                        })
+                    print(f"model: {model_name} \nvdb: {vdb_name} \nembedding: {embedding_type}")
 
                 print(f"Tested {model_name} with system prompt '{system_prompt}' "
                 f"in {response_time:.3f}s, using {memory_used:.3f}MB memory.")
@@ -314,10 +319,13 @@ def compare_all(query, context_results, model_names, compare_models, vdb_names, 
         output_file += ".csv"  # append ".csv" if not already present
 
     # Save results to CSV
-    with open(output_file, "w", newline="", encoding="utf-8") as csvfile:
+    with open(output_file, "a", newline="", encoding="utf-8") as csvfile:
         fieldnames = ["LLM", "Vector DB", "Embedding Type", "System Prompt", "Speed (s)", "Memory (MB)", "Response"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
+
+        if csvfile.tell() == 0:
+            writer.writeheader()
+        
         writer.writerows(results)
 
     print(f"\nResults saved to {output_file}")
