@@ -18,8 +18,8 @@ import json
 redis_client = redis.Redis(host="localhost", port=6380, db=0)
 
 # Initialize PyMongo connection
-user = "****"
-pwd = "****"
+user = "jujoc"
+pwd = "mongo4300J"
 
 CONNECTION_STR = f"mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/" 
 mongo_client = MongoClient(
@@ -339,11 +339,16 @@ def main():
     csv_filename = "chunking_results.csv"
 
     # What database you are ingesting the data for
-    use_collection = "redis"
+    use_collection = "mongo"
 
     # Iterate through chunks
     for chunk_size, overlap in CHUNKING_STRATEGIES:
         chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("./Files/", chunk_size, overlap, csv_filename, coll=use_collection)
+        results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
+
+    # Iterate through chunks
+    for chunk_size, overlap in CHUNKING_STRATEGIES:
+        chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("./Files/", chunk_size, overlap, csv_filename, coll="chroma")
         results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
 
     print("\n---Done processing PDFs---\n")
