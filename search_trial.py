@@ -213,8 +213,8 @@ def generate_rag_response(query, context_results, model_name="mistral:latest", s
 
         context_str += f"From {file} (page {page}, chunk {chunk}) with similarity {float(similarity):.2f}\n"
 
-    print(f"\nUsing model: {model_name}")
-    print(f"context_str: {context_str}")
+    # print(f"\nUsing model: {model_name}")
+    # print(f"context_str: {context_str}")
 
     # Construct prompt with context
     prompt = f"""{system_prompt}
@@ -252,15 +252,16 @@ Answer:"""
     # Remove non-ASCII characters from the response using encode and decode
     response = response.encode("ascii", "ignore").decode("ascii")
 
-    print(f"Execution time: {execution_time:.2f} sec")
-    print(f"Peak memory usage: {peak_memory_mb:.2f} MB")
+    # print(f"Execution time: {execution_time:.2f} sec")
+    # print(f"Peak memory usage: {peak_memory_mb:.2f} MB")
 
     return response, execution_time, peak_memory_mb
 
 
 def get_user_preferences():
-    """ Ask the user whether to compare models, system prompts, both, or neither."""
+    """ Ask the user whether and what to compare."""
     compare_models = input("\nDo you want to compare multiple LLMs? (yes/no): ").strip().lower() == "yes"
+
     if not compare_models:
         print("Benchmarking with mistral:latest model ONLY.")
     compare_prompts = input("\nDo you want to compare multiple system prompts? (yes/no): ").strip().lower() == "yes"
@@ -286,39 +287,39 @@ def compare_all(query, context_results, model_names, compare_models, vdb_names, 
     # system_prompts = SYSTEM_PROMPT_VARIATIONS if compare_prompts else [SYSTEM_PROMPT_VARIATIONS[0]]
 
     if compare_models:
-        models_to_test = input(
+        mods_to_test = input(
             f"Which models of: {model_names} would you like to compare? Input separated by /, or enter for all. "
-            ).split("/") or model_names
+            ).split("/")
+        models_to_test = mods_to_test if mods_to_test != [''] else model_names
     else:
         models_to_test = [model_names[0]]
 
     if compare_embeddings:
-        embeddings_to_test = input(
+        embs_to_test = input(
             f"Which embedding types of: {embedding_names} would you like to compare? Input separated by /, or enter for all. "
-        ).split("/") or embedding_names
+        ).split("/")
+        embeddings_to_test = embs_to_test if embs_to_test != [''] else embedding_names
     else:
         embeddings_to_test = [embedding_names[0]]
 
     if compare_vdbs:
-        vectordbs_to_test = input(
+        vdbs_to_test = input(
             f"Which vector database types of: {vdb_names} would you like to compare? Input separated by /, or enter for all. "
-        ).split("/") or vdb_names
+        ).split("/")
+        vectordbs_to_test = vdbs_to_test if vdbs_to_test != [''] else vdb_names
     else:
         vectordbs_to_test = [vdb_names[0]]
 
     if compare_prompts:
-        system_prompts = input(
+        sys_prompts = input(
             f"Which system prompt of: {SYSTEM_PROMPT_VARIATIONS} would you like to compare? Input separated by / or enter for all. "
         ).split("/") or SYSTEM_PROMPT_VARIATIONS
+        system_prompts = sys_prompts if sys_prompts != [''] else SYSTEM_PROMPT_VARIATIONS
     else:
         system_prompts = [SYSTEM_PROMPT_VARIATIONS[0]]
 
 
     results = []
-
-    print("Testing models: ", models_to_test)
-    print("Testing vdbs: ", vectordbs_to_test)
-    print("Testing embs: ", embeddings_to_test)
 
     for model_name in models_to_test:
         for system_prompt in system_prompts:
@@ -337,10 +338,10 @@ def compare_all(query, context_results, model_names, compare_models, vdb_names, 
                         "Memory (MB)": round(memory_used, 3),
                         "Response": response
                         })
-                    print(f"model: {model_name} \nvdb: {vdb_name} \nembedding: {embedding_type}")
+                    # print(f"model: {model_name} \nvdb: {vdb_name} \nembedding: {embedding_type}")
 
-                print(f"Tested {model_name} with system prompt '{system_prompt}' "
-                f"in {response_time:.3f}s, using {memory_used:.3f}MB memory.")
+                # print(f"Tested {model_name} with system prompt '{system_prompt}' "
+                # f"in {response_time:.3f}s, using {memory_used:.3f}MB memory.")
 
     # Check if the output file ends with ".csv"
     if not output_file.endswith(".csv"):
@@ -357,8 +358,19 @@ def compare_all(query, context_results, model_names, compare_models, vdb_names, 
         
         writer.writerows(results)
 
-    print(f"Compared models: {models_to_test} \nCompared embeddings: {embeddings_to_test} \nCompared vector databases: {vectordbs_to_test}")
+    print(f"\nCompared models: {models_to_test} \nCompared prompts: {system_prompts}\nCompared embeddings: {embeddings_to_test} \nCompared vector databases: {vectordbs_to_test}")
     print(f"\nResults saved to {output_file}")
+
+def check_validity(user_input, acceptable_list):
+    """
+    Check the validity of a user's input.
+    """
+    if user_input not in acceptable_list:
+        new_input = input(f"Invalid entry: {user_input}. Please choose one of: {acceptable_list}: ")
+        return check_validity(new_input, acceptable_list)
+    else:
+        print("accepted input")
+        return user_input
 
 
 # def interactive_search():
