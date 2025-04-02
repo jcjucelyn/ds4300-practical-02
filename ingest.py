@@ -23,10 +23,10 @@ from sentence_transformers import SentenceTransformer
 redis_client = redis.Redis(host="localhost", port=6380, db=0)
 
 # Initialize PyMongo connection
-user = "jujoc"
-pwd = "mongo4300J"
+user = "user" # Edit this to contain your own username
+pwd = "password" # Edit this to contain your own username
 
-CONNECTION_STR = f"mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/" 
+CONNECTION_STR = f"mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/" # Edit this to contain your own Atlas cluster
 mongo_client = MongoClient(
     CONNECTION_STR
 )
@@ -59,7 +59,7 @@ CHUNKING_STRATEGIES = [
 ]
 
 # Define function to clear the redis vector store
-def clear_redis_store(store_type="redis"):
+def clear_store(store_type="redis"):
     # Clear redis store
     if store_type == "redis":
         print("Clearing existing Redis store...")
@@ -80,7 +80,7 @@ def clear_redis_store(store_type="redis"):
         except Exception as e:
             print(f"Error re-creating Chroma collection: {e}")
             
-    # Drop mongo database
+    # Clear mongo database
     elif store_type == "mongo":
         print("Clearing existing Mongo store...")
         mongo_collection.delete_many({})
@@ -324,7 +324,6 @@ def query(query_text: str, emb=EMBEDDING_TYPE):
     res = redis_client.ft(INDEX_NAME).search(
         q, query_params={"vec": np.array(embedding, dtype=np.float32).tobytes()}
     )
-    # print(res.docs)
 
     if res.docs:
         result = "\n".join([f"{doc.id} - {doc.vector_distance}" for doc in res.docs])
@@ -334,7 +333,7 @@ def query(query_text: str, emb=EMBEDDING_TYPE):
 
 def main():
     # Set up environment for ingesting
-    clear_redis_store()
+    clear_store()
     create_hnsw_index()
 
     # Initialize results and csv file
