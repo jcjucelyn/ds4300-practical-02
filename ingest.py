@@ -23,10 +23,10 @@ from sentence_transformers import SentenceTransformer
 redis_client = redis.Redis(host="localhost", port=6380, db=0)
 
 # Initialize PyMongo connection
-user = "jujoc"
-pwd = "mongo4300J"
+user = "user" # Edit this to contain your own username
+pwd = "password" # Edit this to contain your own username
 
-CONNECTION_STR = f"mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/" 
+CONNECTION_STR = f"mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/" # Edit this to contain your own Atlas cluster
 mongo_client = MongoClient(
     CONNECTION_STR
 )
