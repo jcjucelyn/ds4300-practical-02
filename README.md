@@ -75,6 +75,9 @@ The `driver.py` script returns ranked search results with relevant document embe
 **Note: You may have noticed a third Python file in the project repository titled `search.py`. While we don't need to explicitly run this file, it is important because it contains many functions
 that will allow us to systematically vary the embedding models, prompt tweaks, choice of vector database, and choice of LLM used to search documents.**
 
+## Other Project Files
+You may have noticed some folders/files were seemingly not used or mentioned in this guide. This includes the `.idea` folder, the `__pycache__` folder, and the `.DS_Store` file. While not explicitly mentioned, all of these files may be important in ensuring the project files run successfully behind the scenes. Therefore, be sure they are also properly loaded when loading in the project repository and do not delete them!
+
 ## Thank You
 Thank you for reaching the end of this guide on how to execute the files within team jo-fi's project repository for
 Practical #2 - Vector DBs and LLMs! Feel free to reach out to us with any questions not answered in this guide if you need assistance
