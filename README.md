@@ -33,7 +33,7 @@ this file is to evaluate different chunking strategies to analyze their impact o
     * Vector Field
         * Path: embedding
         * Number of Dimensions: 768
-        * Similarity Method: Euclidean
+        * Similarity Method: Cosine
     * Filter Field
         * Path: leave blank
 
