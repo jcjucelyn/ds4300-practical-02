@@ -14,7 +14,7 @@ pip install -r requirements.txt
 This ensures the additional packages listed in the `requirements.txt` file are installed on your machine for use in running the project scripts. 
 
 **Important note: You will also need to ensure that both Ollama and Redis are running in order to run our program.** 
-* Ollama is listed in the `requirements.txt ` file, so it should have already been installed as an application on your machine; open the application for use in the project code.
+* Ollama is listed in the `requirements.txt` file, so it should have already been installed as an application on your machine; open the application for use in the project code.
 * We will use Docker Desktop to ensure Redis is running. If you have not already, create a container for Redis/Redis-Stack using the directions given in class and start it up in Docker Desktop before executing any code in the repository. This is important to ensure you do not get an error! **Take note of the port number you assign to the container as it will be needed later.**
 
 With both Ollama and Redis running, we are now ready to begin running the code!
@@ -84,7 +84,7 @@ After completing this step, we have successfully built a local RAG system that a
 Feel free to ask the RAG system any questions you may have about DS4300 content! 
 
 ## Other Project Files
-You may have noticed some folders/files were seemingly not used or mentioned in this guide. This includes the `.idea` folder, the `__pycache__` folder, and the `.DS_Store` file. While not explicitly mentioned, all of these files may be important in ensuring the project files run successfully behind the scenes. Therefore, be sure they are also properly loaded when loading in the project repository and do not delete them!
+You may have noticed some folders/files were seemingly not used or mentioned in this guide. This includes the `.idea` folder, the `__pycache__` folder, and the `.DS_Store` file. While not explicitly mentioned, all of these files may be important in ensuring the project files run successfully behind the scenes. Therefore, be sure they are also properly loaded when loading in the project repository and do not delete them! We also uploaded .csv files for each user question we developed in order to quantitatively support our pipeline recommendation in the slide deck (`question1.csv`, `question2.csv`, `question3.csv`, `question4.csv`, `question5.csv`). Nothing needs to be executed in these files, but they are included in the repository for those who may be interested.
 
 ## Thank You
 Thank you for reaching the end of this guide on how to execute the files within team jo-fi's project repository for
