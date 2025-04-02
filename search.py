@@ -397,3 +397,4 @@ def check_validity(user_input, acceptable_list):
         return check_validity(new_input, acceptable_list) # Recursively prompt again
 
     return user_input if isinstance(user_input, list) else selections[0] # Return list if multiple, else single value
+    
