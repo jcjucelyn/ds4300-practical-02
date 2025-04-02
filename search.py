@@ -13,6 +13,7 @@ import ollama
 import numpy as np
 import redis
 import time
+import json
 import tracemalloc
 from pymongo import MongoClient
 from redis.commands.search.query import Query
@@ -49,23 +50,21 @@ SYSTEM_PROMPT_VARIATIONS = [
 
 # Define function to generate an embedding using nomic-embed-text, all-MiniLM-L6-v2, or all-mpnet-base-v2
 def get_embedding(text: str, model: str="nomic-embed-text") -> list:
-
+    # Access through ollama (nomic-embed) or SentenceTransformer(other)
     if model=="nomic-embed-text":
         response = ollama.embeddings(model=model, prompt=text)
         
     else:
         response = SentenceTransformer(model)
 
-    # Return response.encode(text)
     return response["embedding"]
 
 # Define function to search embeddings
 def search_embeddings(query, emb_type="nomic-embed-text", collection="redis", top_k=3, chroma_coll=None):
-
+    # Get the embedding of the query
     query_embedding = get_embedding(text=query, model=emb_type)
 
     if collection == "redis":    
-
         # Convert embedding to bytes for Redis search
         query_vector = np.array(query_embedding, dtype=np.float32).tobytes()
 
@@ -145,7 +144,6 @@ def search_embeddings(query, emb_type="nomic-embed-text", collection="redis", to
 
                 return top_results[:top_k]
 
-
         except Exception as e:
             print(f"Search error: {e}")
             return []
@@ -155,7 +153,6 @@ def search_embeddings(query, emb_type="nomic-embed-text", collection="redis", to
 
             # Create a vector search index in Atlas: 
                 # search indexes > create new > db: db, collection: mongoCollection, name: pracB_searchindex, type: vector, distance: euclidean
-
             results = db.mongoCollection.aggregate([
                 {
                     "$vectorSearch": {
@@ -176,19 +173,25 @@ def search_embeddings(query, emb_type="nomic-embed-text", collection="redis", to
                         
                     }
                 }])
+                        
+            # Handle case where no results are found
+            if not results:
+                return []
+            elif results == [[]]:
+                return []   
+            else: 
+                # Transform results into the expected format
+                top_results = [
+                    {
+                        "file": result["file"],
+                        "page": result["page"],
+                        "chunk": result["chunk"],
+                        "similarity": result["similarity"],
+                    }
+                    for result in results
+                ][:top_k]
 
-            # Transform results into the expected format
-            top_results = [
-                {
-                    "file": result["file"],
-                    "page": result["page"],
-                    "chunk": result["chunk"],
-                    "similarity": result["similarity"],
-                }
-                for result in results
-            ][:top_k]
-
-            return top_results
+                return top_results
 
         except Exception as e:
             print(f"Search error: {e}")
@@ -196,6 +199,7 @@ def search_embeddings(query, emb_type="nomic-embed-text", collection="redis", to
 
 # Define function to generate rag response
 def generate_rag_response(query, context_results, model_name="mistral:latest", system_prompt=SYSTEM_PROMPT_VARIATIONS[0]):
+    
     # Handle case where no relevant context is found
     if not context_results:
         return "I couldn't find relevant information. Try rephrasing your query.", 0, 0
@@ -267,8 +271,9 @@ def get_user_preferences():
     return compare_models, compare_prompts, compare_vdbs, compare_embeddings
 
 # Define function to compare multiple variables and save results
-def compare_all(query, context_results, model_names, compare_models, vdb_names, compare_vdbs, embedding_names, compare_embeddings, compare_prompts, output_file="query_results.csv"):
+def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, embedding_names, compare_embeddings, compare_prompts, output_file="query_results.csv"):
     """ Compare multiple LLMs, prompts, vector databases, and embedding types and save results to a CSV file."""
+    # Determine variations based on user choices, inputted separated by / or all (enter)
     if compare_models:
         mods_to_test = input(
             f"Which models of: {model_names} would you like to compare? Input separated by /, or enter for all. "
@@ -303,9 +308,44 @@ def compare_all(query, context_results, model_names, compare_models, vdb_names, 
 
     results = []
 
+    # Initialize Chroma if it is in the test list
+    if "chroma" in vectordbs_to_test:
+        # Access Chroma Collection from file (run ingest.py first)
+        try:
+            with open("chromaCollection.json", "r") as f:
+                chroma_data = json.load(f)
+        except Exception as e:
+            chroma_data = {}
+            print(f"Error reading JSON: {e}")
+
+        # Turn Chroma JSON into a collection
+        chroma_collection = chroma_client.create_collection(name="chromaCollection")
+        ids = list(item["id"] for item in chroma_data)
+        embs = [item["embedding"] for item in chroma_data]
+        metadata = [{"file": item["file"],
+                    "page": item["page"],
+                    "chunk": item["chunk"]} for item in chroma_data]
+
+        # Add file to chroma_collection
+        chroma_collection.add(
+            ids=ids,
+            documents=[item["chunk"] for item in chroma_data],
+            metadatas=metadata,
+            embeddings=embs
+        )
+
+    print('\nLoading...\n')
+
+    # Iterate through choices
     for model_name in models_to_test:
         for system_prompt in system_prompts:
             for vdb_name in vectordbs_to_test:
+                # Generate context results
+                if vdb_name == "chroma":
+                    context_results = search_embeddings(query, collection=vdb_name, chroma_coll=chroma_collection)
+                else:
+                    context_results = search_embeddings(query, collection=vdb_name)
+
                 for embedding_type in embeddings_to_test:
                     response, response_time, memory_used = generate_rag_response(
                     query, context_results, model_name, system_prompt
@@ -356,4 +396,4 @@ def check_validity(user_input, acceptable_list):
         new_input = input(f"Please choose from: {acceptable_list}: ")
         return check_validity(new_input, acceptable_list) # Recursively prompt again
 
-    return user_input if isinstance(user_input, list) else selections # Return list if multiple, else single value
+    return user_input if isinstance(user_input, list) else selections[0] # Return list if multiple, else single value
