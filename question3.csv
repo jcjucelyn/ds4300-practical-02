@@ -1,0 +1,141 @@
+LLM,Vector DB,Embedding Type,System Prompt,Speed (s),Memory (MB),Response
+mistral:latest,redis,nomic-embed-text,"You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say 'I don't know'.",68.37,0.109," To insert 40 into the given AVL tree (10 / 20 / 30 \ 35), we'll follow the same process as in a Binary Search Tree, but with additional rotations to maintain balance. Here's how it works:
+
+1. First, find the appropriate place for 40 in the tree. Since 40 is greater than 30 and less than 35, we insert it as the right child of 30. This gives us the tree:
+
+```
+10 / 20 / 30 \ 35 / 40
+```
+
+Now, let's check if the inserted node (40) and its ancestors violate the AVL property. We'll start from the root (40's ancestor) and move up to the root.
+
+1. Checking the path from 40 to the root: The height difference between the left subtree and the right subtree of each node on this path should not exceed 1. In this case, it does not because we have only inserted a single node without any rotations yet.
+2. Checking node 35 (the parent of 40): Its left subtree is of height 1 (subtree rooted at 30), and its right subtree is of height 0 (empty). The height difference is 1, which exceeds the allowed limit of 1 for AVL trees. Therefore, we need to perform a rotation to rebalance the tree.
+3. Performing the LL rotation: We'll rotate the left subtree of 35 (which contains node 30 and its potential future descendants) around node 35. This gives us:
+
+```
+10 / 20 /   35
+         /   \
+        30    40
+```
+
+Now, the height difference at node 35 is 0, meeting the AVL property requirement.
+
+As for the differences between AVL trees, Binary Search Trees (BST), and B+ trees:
+
+1. Balancing: AVL trees are self-balancing binary search trees that require rotations to maintain balance during insertions and deletions. BSTs do not have this requirement, but they can become unbalanced over time, affecting the efficiency of certain operations. B+ trees, on the other hand, are multi-level data structures designed for efficient disk I/O operations in databases. They have a fixed number of keys per node and use a balanced tree structure to manage the keys and associated data within each level.
+2. Complexity: In a well-balanced AVL tree or B+ tree, lookups, insertions, and removals are O(log n) operations. For an unbalanced BST, these operations can degrade to O(n).
+3. Space complexity: AVL trees require additional storage for balance factors, adding some overhead compared to a regular BST. B+ trees have more levels, potentially reducing memory usage on disk but increasing the number of disk I/O operations."
+gemma3:1b,redis,nomic-embed-text,"You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say 'I don't know'.",24.773,0.099,"Okay, let's analyze the insertion of 40 into the AVL tree and determine the necessary rotations.
+
+**1. Initial State:**
+
+We start with the following tree structure:
+
+```
+      10
+     /  \
+    20   30
+   /  \
+  35   30
+```
+
+**2. Insertion of 40:**
+
+*   We insert 40 into the tree.  The tree structure will now be:
+
+```
+      10
+     /  \
+    20   30
+   /  \
+  35   30
+```
+
+**3. Analysis of Rotations:**
+
+Since we're inserting a key, we need to perform rotations to rebalance the tree.  The key is to ensure the AVL property is maintained.  Let's consider the possible rotations:
+
+*   **LL Rotation (Left-Left Rotation):**  We need to rotate the subtree rooted at 30 to the left. This will involve moving the root (30) to the left and re-arranging the nodes.
+*   **RR Rotation (Right-Right Rotation):** We need to rotate the subtree rooted at 30 to the right. This will involve moving the root (30) to the right and re-arranging the nodes.
+*   **LR Rotation (Left-Right Rotation):** We need to rotate the subtree rooted at 30 to the left. This will involve moving the root (30) to the left and re-arranging the nodes.
+*   **RL Rotation (Right-Left Rotation):** We need to rotate the subtree rooted at 30 to the right. This will involve moving the root (30) to the right and re-arranging the nodes.
+
+**4.  Determining Rotations:**
+
+Because 40 is larger than 30, the LL rotation is the most immediate and crucial step.  The LL rotation will move the root (30) to the left, effectively creating a new subtree with 40 as the root.
+
+**5.  Rotation Sequence:**
+
+The sequence of rotations will be:
+
+1.  **LL Rotation:**  Moves the root (30) to the left.
+2.  **RR Rotation:** Moves the root (30) to the right.
+3.  **LR Rotation:** Moves the root (30) to the left.
+4.  **RL Rotation:** Moves the root (30) to the right.
+
+**6.  Final State:**
+
+After these rotations, the tree will look like this:
+
+```
+      10
+     /  \
+    20   30
+   /  \
+  35   30
+```
+
+**7.  Height and Time Complexity**
+
+*   **Height:** The height of the tree is O(log n).  This is because each rotation effectively reduces the height by 1.
+*   **Time Complexity:** The rotations take O(n) time.
+
+**8.  Difference with Binary Search Tree/B+ Tree**
+
+*   **Binary Search Tree:** A binary search tree has a height of O(log n).  The insertion/rebalancing process is O(log n).
+*   **B+ Tree:** A B+ tree has a height of O(log n). The insertion/rebalancing process is O(log n).
+
+The key difference is that a B+ tree maintains the balance of the tree by having a more sophisticated structure that allows for more efficient lookups and insertions.  The AVL tree's balancing is achieved through rotations, which are a more complex process than the simpler rotations used in a B+ tree.
+
+**Conclusion:**
+
+To maintain balance, the following rotations are needed:
+
+1.  **LL Rotation:**  Moves the root (30) to the left.
+2.  **RR Rotation:** Moves the root (30) to the right.
+3.  **LR Rotation:** Moves the root (30) to the left.
+4.  **RL Rotation:** Moves the root (30) to the right.
+
+The insertion/rebalancing process will take O(n) time.
+"
+llama3.2,redis,nomic-embed-text,"You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say 'I don't know'.",23.156,0.099,"To insert 40 into the given AVL tree, we need to perform an LL rotation on the node with key 30.
+
+Here's why:
+
+1. After inserting 40, the tree becomes:
+   10
+     / \
+    20 30
+     \ /
+      35
+
+2. Since the node with key 30 has two children (left and right), its balance factor is -1. In AVL trees, a node with a balance factor greater than or equal to -1 is considered balanced.
+
+3. To maintain balance, we need to perform an LL rotation on the node with key 30. This rotation will shift the left child of 30 up one level, effectively balancing the tree.
+
+After performing the rotation, the corrected tree becomes:
+
+   10
+     / \
+    20 35
+     \ /
+      30
+
+Now, let's compare this to a Binary Search Tree (BST) or B+ tree:
+
+In a BST, inserting 40 would require traversing down the left child of 30 and then balancing the resulting subtree. This process might involve multiple rotations, but it's not guaranteed to be O(log n).
+
+In a B+ tree, inserting 40 would also require traversing down the search path and balancing the resulting node. However, unlike AVL trees, B+ trees use a different set of rules for maintaining balance, such as checking the height of nodes instead of their balance factor.
+
+The key difference between these data structures is that AVL trees are designed to maintain balance at every level, whereas BSTs and B+ trees might not require rotations after every insertion. Instead, they often rely on more complex algorithms like self-balancing or indexing to maintain performance."

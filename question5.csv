@@ -1,0 +1,22 @@
+LLM,Vector DB,Embedding Type,System Prompt,Speed (s),Memory (MB),Response
+mistral:latest,redis,nomic-embed-text,"""You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say 'I don't know'.""",25.768,0.111," Here's a simple Python function for performing binary search, based on the context provided:
+
+```python
+def binary_search(arr, target):
+    left = 0
+    right = len(arr) - 1
+
+    while left <= right:
+        mid = (left + right) // 2
+
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] < target:
+            left = mid + 1
+        else:
+            right = mid - 1
+
+    return -1
+```
+
+This function takes an array of sorted values (`arr`) and a target value (`target`), then performs binary search on the input array until it finds the target or determines that the target is not present. It returns the index of the target if found, otherwise -1. Keep in mind that this implementation assumes that the input array is already sorted."

@@ -1,0 +1,44 @@
+LLM,Vector DB,Embedding Type,System Prompt,Speed (s),Memory (MB),Response
+mistral:latest,redis,nomic-embed-text,"You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say 'I don't know'.",22.826,0.108," The `$regex` operator in a MongoDB query is used for regular expression searches. It allows you to perform pattern matching on fields within your documents. Here's an example of using the `$regex` operator:
+
+```javascript
+db.collection.find({ field: { $regex: /pattern/, $options: ""i"" } })
+```
+In this example, replace `collection` with the name of your MongoDB collection and `field` with the name of the field you want to search. The `/pattern/` is the regular expression pattern you're searching for, and the `$options` parameter set to ""i"" makes the search case-insensitive.
+
+For example:
+
+```javascript
+db.movies.find({ title: { $regex: /bat/, $options: ""i"" } })
+```
+This query would return all movies with titles containing 'bat', regardless of the casing (case-insensitive)."
+mistral:latest,redis,nomic-embed-text,You are an expert in technical writing and software engineering.,12.732,0.107," The `$regex` operator in a MongoDB query is used to search for documents where the specified field contains a regular expression pattern. Here's an example using the `rated` field, as shown in the provided document:
+
+```javascript
+db.movies.find({rated: {$regex: /PG|PG-13/i}})
+```
+
+In this example, the query searches for movies where the `rated` field matches either ""PG"" or ""PG-13"". The `/.../i` part is a regular expression modifier that makes the search case insensitive."
+mistral:latest,redis,nomic-embed-text,You are a professor explaining concepts to a student.,15.027,0.102," The `$regex` operator in a MongoDB query is used to search for documents that contain a specific pattern or regular expression. This operator allows for flexible and powerful text search capabilities. Here's an example using the `$regex` operator to find all movie documents with a rated field containing either ""G"" or ""NC-17"":
+
+```
+db.movies.find({rated: {$regex: /(G|NC-17)/i}})
+```
+
+In this example, the regular expression `/(G|NC-17)/i` is looking for any documents where the rated field matches ""G"" or ""NC-17"", regardless of case (the `/i` at the end makes the search case-insensitive)."
+mistral:latest,redis,nomic-embed-text,You are a creative storyteller.,14.78,0.102," The `$regex` operator is used in a MongoDB query to search for documents that contain a specific pattern or regular expression. This allows for more flexible and powerful queries compared to simple equality operations. Here's an example of using the `$regex` operator:
+
+```mongosh
+db.movies.find({ title: { $regex: /.*Action./i } })
+```
+
+In this query, we're searching for all movies where the title contains the word ""Action"" (case insensitive due to the `/i` flag). The dot before and after ""Action"" in the regular expression indicates that it can match any character, so the search will also find titles like ""Action Adventure"" or ""The Action Hero."""
+mistral:latest,redis,nomic-embed-text,"You are a concise and direct AI, providing brief answers.",11.614,0.105," The `$regex` operator in MongoDB is used to perform regular expression searches, making it possible to find documents containing specific patterns or expressions.
+
+Here's an example:
+
+```javascript
+db.movies.find({title: {$regex: /PG\d/}});
+```
+
+This query will return all movies whose title contains the pattern ""PG"" followed by a number, such as ""PG-13"" or ""PG-7"". The forward slashes around the pattern represent a regular expression in MongoDB."
