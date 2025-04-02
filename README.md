@@ -72,8 +72,16 @@ As mentioned above, it was important to run the `ingest.py` script first as this
 #### Output
 The `driver.py` script returns ranked search results with relevant document embeddings and generates responses using a selected LLM, embedding type, vector database, and system prompt. If benchmarking is enabled, retrieval performance metrics are saved to a user-specified .csv file for further analysis.
 
-**Note: You may have noticed a third Python file in the project repository titled `search.py`. While we don't need to explicitly run this file, it is important because it contains many functions
-that will allow us to systematically vary the embedding models, prompt tweaks, choice of vector database, and choice of LLM used to search documents.**
+**Note: You may have noticed a third Python file in the project repository titled `search.py`. While we don't need to explicitly run this file, it is important because it contains many functions that will allow us to systematically vary the embedding models, prompt tweaks, choice of vector database, and choice of LLM used to search documents.**
+
+After completing this step, we have successfully built a local RAG system that achieves the following:
+* Ingests a collection of documents that represent material, such as course notes, we have collected throughout the semester. 
+* Indexes those documents using embedding and a vector database.
+* Accepts a query from the user. 
+* Retrieves relevant context based on the user’s query.
+* Packages the relevant context up into a prompt that is passed to a locally-running LLM to generate a response.
+
+Feel free to ask the RAG system any questions you may have about DS4300 content! 
 
 ## Other Project Files
 You may have noticed some folders/files were seemingly not used or mentioned in this guide. This includes the `.idea` folder, the `__pycache__` folder, and the `.DS_Store` file. While not explicitly mentioned, all of these files may be important in ensuring the project files run successfully behind the scenes. Therefore, be sure they are also properly loaded when loading in the project repository and do not delete them!
@@ -82,15 +90,3 @@ You may have noticed some folders/files were seemingly not used or mentioned in 
 Thank you for reaching the end of this guide on how to execute the files within team jo-fi's project repository for
 Practical #2 - Vector DBs and LLMs! Feel free to reach out to us with any questions not answered in this guide if you need assistance
 running the project files. Happy searching!
-
-
-
-
-
-
-
-
-
-
-
-
