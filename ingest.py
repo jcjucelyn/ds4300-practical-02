@@ -1,18 +1,23 @@
-## DS 4300 Example - from docs
+"""
+Sophie Sawyers and Jocelyn Ju
+DS4300 || Practical 2
 
-import ollama
-import redis
-import numpy as np
-from redis.commands.search.query import Query
-import os
+ingest.py : A Python file to collect and clean the data from given documents
+"""
+# Import necessary packages
+import chromadb
+import csv
 import fitz
+import json
+import numpy as np
+import ollama
+import os
+import redis
 import time
 import tracemalloc
-import csv
-from sentence_transformers import SentenceTransformer
 from pymongo import MongoClient
-import chromadb
-import json
+from redis.commands.search.query import Query
+from sentence_transformers import SentenceTransformer
 
 # Initialize Redis connection
 redis_client = redis.Redis(host="localhost", port=6380, db=0)
@@ -33,7 +38,7 @@ chroma_client = chromadb.Client()
 chroma_collection = chroma_client.create_collection(name="chromaCollection",
                                                     get_or_create=True)
 
-
+# Define global variables
 VECTOR_DIM = 768
 INDEX_NAME = "embedding_index"
 DOC_PREFIX = "doc:"
@@ -53,8 +58,8 @@ CHUNKING_STRATEGIES = [
     (1000, 100),
 ]
 
-# Used to clear the redis vector store
-def clear_store(store_type="redis"):
+# Define function to clear the redis vector store
+def clear_redis_store(store_type="redis"):
     # Clear redis store
     if store_type == "redis":
         print("Clearing existing Redis store...")
@@ -75,7 +80,7 @@ def clear_store(store_type="redis"):
         except Exception as e:
             print(f"Error re-creating Chroma collection: {e}")
             
-    # drop mongo database
+    # Drop mongo database
     elif store_type == "mongo":
         print("Clearing existing Mongo store...")
         mongo_collection.delete_many({})
@@ -84,8 +89,7 @@ def clear_store(store_type="redis"):
     else:
         print(f"Invalid store type: {store_type}. Must be one of: redis, chroma, mongo")
 
-
-# Create an HNSW index in Redis
+# Define function to create an HNSW index in Redis
 def create_hnsw_index():
     try:
         redis_client.execute_command(f"FT.DROPINDEX {INDEX_NAME} DD")
@@ -101,8 +105,7 @@ def create_hnsw_index():
     )
     print("Index created successfully.")
 
-
-# Generate an embedding using specified model
+# Define function to generate an embedding using specified model
 def get_embedding(text: str, model: str=EMBEDDING_TYPE) -> list:
 
     if model=="nomic-embed-text":
@@ -112,11 +115,10 @@ def get_embedding(text: str, model: str=EMBEDDING_TYPE) -> list:
         mod = SentenceTransformer(model)
         response = mod.encode(text)
 
-    # return response.encode(text)
+    # Return response.encode(text)
     return response["embedding"]
 
-
-# Store the embedding in given collection
+# Define function to store the embedding in given collection
 def store_embedding(file: str, page: str, chunk: str, embedding: list, collection: str="redis"):
     key = f"{DOC_PREFIX}:{file}_page_{page}_chunk_{chunk}"
 
@@ -157,8 +159,7 @@ def store_embedding(file: str, page: str, chunk: str, embedding: list, collectio
             chroma_collection = chroma_client.get_collection(name="chromaCollection")
             print("Chroma Collection Get")
 
-        
-        # add to chroma collection
+        # Add to chroma collection
         chroma_collection.add(
             documents=[chunk], 
             ids=[key],
@@ -183,8 +184,7 @@ def store_embedding(file: str, page: str, chunk: str, embedding: list, collectio
     else:
         return(f"Invalid collection: {collection}. Please use one of: redis, mongo, chroma.")
 
-
-# extract the text from a PDF by page
+# Define function to extract the text from a PDF by page
 def extract_text_from_pdf(pdf_path):
     """Extract text from a PDF file."""
     doc = fitz.open(pdf_path)
@@ -193,8 +193,9 @@ def extract_text_from_pdf(pdf_path):
         text_by_page.append((page_num, page.get_text()))
     return text_by_page
 
-
-def preprocess_text(text: str) -> str:
+# Define function to preprocess text
+def preprocess_text(text):
+    """ Preprocess given text by removing non-ASCII characters and extra whitespace. Return cleaned text."""
     # Remove non-ASCII characters
     text = ''.join([char for char in text if ord(char) < 128])
 
@@ -203,8 +204,7 @@ def preprocess_text(text: str) -> str:
 
     return text
 
-
-# split the text into chunks with overlap
+# Define function to split the text into chunks with overlap
 def split_text_into_chunks(text, chunk_size=300, overlap=50):
     """Split text into chunks of approximately chunk_size words with overlap."""
     # Preprocess the text before splitting into chunks
@@ -217,8 +217,7 @@ def split_text_into_chunks(text, chunk_size=300, overlap=50):
         chunks.append(chunk)
     return chunks
 
-
-# Process all PDF files in a given directory
+# Define function to process all PDF files in a given directory
 def process_pdfs(data_dir, chunk_size, overlap, csv_filename, coll, emb=EMBEDDING_TYPE):
     start_time = time.time()
     tracemalloc.start()
@@ -230,7 +229,7 @@ def process_pdfs(data_dir, chunk_size, overlap, csv_filename, coll, emb=EMBEDDIN
 
     for file_name in os.listdir(data_dir):
         if file_name.endswith(".pdf"):
-            # initialize a list of docs to save to JSON for chromaCollection
+            # Initialize a list of docs to save to JSON for chromaCollection
             pdf_path = os.path.join(data_dir, file_name)
             text_by_page = extract_text_from_pdf(pdf_path)
 
@@ -248,7 +247,7 @@ def process_pdfs(data_dir, chunk_size, overlap, csv_filename, coll, emb=EMBEDDIN
                         emb_doc = store_embedding(
                             file=file_name,
                             page=str(page_num),
-                            chunk=str(chunk),  # Storing full chunk instead of index
+                            chunk=str(chunk), # Storing full chunk instead of index
                             embedding=embedding,
                             collection="chroma"
                         )
@@ -257,7 +256,7 @@ def process_pdfs(data_dir, chunk_size, overlap, csv_filename, coll, emb=EMBEDDIN
                         store_embedding(
                             file=file_name,
                             page=str(page_num),
-                            chunk=str(chunk),  # Storing full chunk instead of index
+                            chunk=str(chunk), # Storing full chunk instead of index
                             embedding=embedding,
                             collection=coll
                         )
@@ -265,7 +264,7 @@ def process_pdfs(data_dir, chunk_size, overlap, csv_filename, coll, emb=EMBEDDIN
                 # Collect all chunks for the query later
                 all_chunks.extend(chunks)
 
-            print(f" -----> Processed {file_name}")  # Log progress
+            print(f" -----> Processed {file_name}")
             total_files += 1
 
     # Save chroma collection to JSON
@@ -286,7 +285,7 @@ def process_pdfs(data_dir, chunk_size, overlap, csv_filename, coll, emb=EMBEDDIN
 
     return chunk_size, overlap, elapsed_time, peak_memory / 1e6, total_chunks
 
-
+# Define function to store query result for chunking strategy
 def store_query_result(chunk_size, overlap, speed, peak_memory, total_chunks, answer, db, csv_filename, emb_type=EMBEDDING_TYPE):
     """
     Store the query result for a given chunking strategy in a CSV file.
@@ -308,7 +307,7 @@ def store_query_result(chunk_size, overlap, speed, peak_memory, total_chunks, an
         # Write the result row
         writer.writerow([db, emb_type, chunk_size, overlap, speed, peak_memory, total_chunks, answer])
 
-
+# Define function to ask query
 def query(query_text: str, emb=EMBEDDING_TYPE):
     # Set default result
     result = "No results found"
@@ -332,18 +331,19 @@ def query(query_text: str, emb=EMBEDDING_TYPE):
         print(result)
     return result
 
-def main():
 
-    # Initialize 
+def main():
+    # Set up environment for ingesting
+    clear_redis_store()
+    create_hnsw_index()
+
+    # Initialize results and csv file
     results = []
     csv_filename = "chunking_results.csv"
 
-    # What database you are ingesting the data for
-    use_collection = "mongo"
-
-    # Iterate through chunks
+    # Iterate through chunks (storing files in pre-defined 'Files' folder in the project; can be changed by user if necessary)
     for chunk_size, overlap in CHUNKING_STRATEGIES:
-        chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("./Files/", chunk_size, overlap, csv_filename, coll=use_collection)
+        chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("./Files/", chunk_size, overlap, csv_filename, coll="mongo")
         results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
 
     # Iterate through chunks

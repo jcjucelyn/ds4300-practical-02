@@ -1,0 +1,7 @@
+chromadb
+numpy
+ollama
+pymongo
+pymupdf
+redis
+sentence-transformers

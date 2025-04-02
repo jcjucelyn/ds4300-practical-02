@@ -1,35 +1,44 @@
-import redis
-import json
-import numpy as np
-from sentence_transformers import SentenceTransformer
+"""
+Sophie Sawyers and Jocelyn Ju
+DS4300 || Practical 2
+
+search.py : A Python file to systematically vary the chunking strategies, embedding models, various prompt tweaks,
+choice of Vector DB, and choice of LLM used to search documents
+"""
+# Import necessary packages
+import chromadb
+import csv
+import gc
 import ollama
-from redis.commands.search.query import Query
-from redis.commands.search.field import VectorField, TextField
+import numpy as np
+import redis
 import time
 import tracemalloc
-import gc
-import csv
-import chromadb
-# from ingest import get_chroma_collection
+from pymongo import MongoClient
+from redis.commands.search.query import Query
+from sentence_transformers import SentenceTransformer
 
-from torch.backends.cudnn import benchmark
-
-# Initialize models
-# embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+# Set up redis and chroma client connections
 redis_client = redis.StrictRedis(host="localhost", port=6380, decode_responses=True)
 chroma_client = chromadb.Client()
 
+# Initialize PyMongo connection through limited role
+user = "ds4300_staff"
+pwd = "staffStaff4300"
+CONNECTION_STR = f"mongodb+srv://{user}:{pwd}@cluster0.dhzls.mongodb.net/"
+mongo_client = MongoClient(
+    CONNECTION_STR
+)
+db = mongo_client["4300-pracB"]
+mongo_collection = db["mongoCollection"]
+
+# Define global variables
 VECTOR_DIM = 768
 INDEX_NAME = "embedding_index"
 DOC_PREFIX = "doc:"
 DISTANCE_METRIC = "COSINE"
 
-# def cosine_similarity(vec1, vec2):
-#     """Calculate cosine similarity between two vectors."""
-#     return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
-
-
-# Sample system prompts for comparison
+# Define sample system prompts for comparison
 SYSTEM_PROMPT_VARIATIONS = [
     "You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say 'I don't know'.",
     "You are an expert in technical writing and software engineering.",
@@ -38,8 +47,7 @@ SYSTEM_PROMPT_VARIATIONS = [
     "You are a concise and direct AI, providing brief answers."
 ]
 
-
-# Generate an embedding using nomic-embed-text, all-MiniLM-L6-v2, or all-mpnet-base-v2
+# Define function to generate an embedding using nomic-embed-text, all-MiniLM-L6-v2, or all-mpnet-base-v2
 def get_embedding(text: str, model: str="nomic-embed-text") -> list:
 
     if model=="nomic-embed-text":
@@ -48,15 +56,15 @@ def get_embedding(text: str, model: str="nomic-embed-text") -> list:
     else:
         response = SentenceTransformer(model)
 
-    # return response.encode(text)
+    # Return response.encode(text)
     return response["embedding"]
 
-
-def search_embeddings(query, emb_type="nomic-embed-text", collection="redis", top_k=3):
+# Define function to search embeddings
+def search_embeddings(query, emb_type="nomic-embed-text", collection="redis", top_k=3, chroma_coll=None):
 
     query_embedding = get_embedding(text=query, model=emb_type)
 
-    if collection== "redis":    
+    if collection == "redis":    
 
         # Convert embedding to bytes for Redis search
         query_vector = np.array(query_embedding, dtype=np.float32).tobytes()
@@ -64,8 +72,6 @@ def search_embeddings(query, emb_type="nomic-embed-text", collection="redis", to
         try:
             # Construct the vector similarity search query
             # Use a more standard RediSearch vector search syntax
-            # q = Query("*").sort_by("embedding", query_vector)
-
             q = (
                 Query("*=>[KNN 5 @embedding $vec AS vector_distance]")
                 .sort_by("vector_distance")
@@ -93,32 +99,19 @@ def search_embeddings(query, emb_type="nomic-embed-text", collection="redis", to
                 for result in results.docs
             ][:top_k]
 
-            # Print results for debugging
-            # for result in top_results:
-            #     print(
-            #         f"---> File: {result['file']}, Page: {result['page']}, Chunk: {result['chunk']}"
-            #     )
-
             return top_results
 
         except Exception as e:
             print(f"Search error: {e}")
             return []
         
-    elif collection=="chroma":
+    elif collection =="chroma":
         try:
-            # get collection
-            # chroma_collection = chroma_client.get_collection(name="chromaCollection")
-            chroma_collection = get_chroma_collection()
-            print("cc:", chroma_collection.count())
-
-            # extract results
-            results = chroma_collection.query(
+            # Extract results
+            results = chroma_coll.query(
                 query_embeddings=query_embedding,
                 n_results=top_k
             )
-
-            print("results:", results)
 
             # Handle case where no results are found
             if not results["documents"]:
@@ -128,31 +121,80 @@ def search_embeddings(query, emb_type="nomic-embed-text", collection="redis", to
             
             # Transform results into the expected format
             else:
-                top_results = [
-                    {
-                        "file": result.get("file", "Unknown file"),
-                        "page": result.get("page", "Unknown page"),
-                        "chunk": result.get("chunk", "Unknown chunk"),
-                        "similarity": result.get("score", 0),
-                    }
-                    for result in results["documents"]
-                ][:top_k]
+                # Initialize storage
+                top_results = []
+                
+                # Iterate through the results
+                for i in range(len(results["documents"][0])):
+                    document = results["documents"][0][i]
+                    metadata = results["metadatas"][0][i]
+                    distance = results["distances"][0][i]
 
-                return top_results
+                    # Metadata
+                    file = metadata["file"]
+                    page = metadata["page"]
+                    chunk = metadata["chunk"]
+                   
+                    # Append to the storage list
+                    top_results.append({
+                        "file":file,
+                        "page":page,
+                        "chunk":chunk,
+                        "similarity":distance
+                    })
+
+                return top_results[:top_k]
 
 
         except Exception as e:
             print(f"Search error: {e}")
             return []
-    elif collection=="mongo":
+    else: # collection == mongo
         try:
-            pass
+            candidates = mongo_collection.count_documents({})
+
+            # Create a vector search index in Atlas: 
+                # search indexes > create new > db: db, collection: mongoCollection, name: pracB_searchindex, type: vector, distance: euclidean
+
+            results = db.mongoCollection.aggregate([
+                {
+                    "$vectorSearch": {
+                        "index": "pracB_searchindex",
+                        "limit": top_k,
+                        "numCandidates": candidates,
+                        "path": "embedding",
+                        "queryVector": query_embedding
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 1,
+                        "file": 1,
+                        "page":1,
+                        "chunk":1,
+                        "similarity": {"$meta":"vectorSearchScore"}
+                        
+                    }
+                }])
+
+            # Transform results into the expected format
+            top_results = [
+                {
+                    "file": result["file"],
+                    "page": result["page"],
+                    "chunk": result["chunk"],
+                    "similarity": result["similarity"],
+                }
+                for result in results
+            ][:top_k]
+
+            return top_results
+
         except Exception as e:
             print(f"Search error: {e}")
             return []
-    
 
-
+# Define function to generate rag response
 def generate_rag_response(query, context_results, model_name="mistral:latest", system_prompt=SYSTEM_PROMPT_VARIATIONS[0]):
     # Handle case where no relevant context is found
     if not context_results:
@@ -164,12 +206,9 @@ def generate_rag_response(query, context_results, model_name="mistral:latest", s
         file = result.get('file', 'Unknown file')
         page = result.get('page', 'Unknown page')
         chunk = result.get('chunk', 'Unknown chunk')
-        similarity = result.get('similarity', 0)  # Default to 0 if similarity is missing
+        similarity = result.get('similarity', 0) # Default to 0 if similarity is missing
 
         context_str += f"From {file} (page {page}, chunk {chunk}) with similarity {float(similarity):.2f}\n"
-
-    print(f"\nUsing model: {model_name}")
-    print(f"context_str: {context_str}")
 
     # Construct prompt with context
     prompt = f"""{system_prompt}
@@ -207,48 +246,80 @@ Answer:"""
     # Remove non-ASCII characters from the response using encode and decode
     response = response.encode("ascii", "ignore").decode("ascii")
 
-    print(f"Execution time: {execution_time:.2f} sec")
-    print(f"Peak memory usage: {peak_memory_mb:.2f} MB")
-
     return response, execution_time, peak_memory_mb
 
-
+# Define function to get user preferences for benchmarking/search
 def get_user_preferences():
-    """ Ask the user whether to compare models, system prompts, both, or neither."""
+    """ Ask the user whether and what to compare."""
+    compare_vdbs = input("\nDo you want to compare multiple vector databases? (yes/no): ").strip().lower() == "yes"
+    if not compare_vdbs:
+        print("Benchmarking with default vector database ONLY ('redis').")
+    compare_embeddings = input("\nDo you want to compare multiple embedding types? (yes/no): ").strip().lower() == "yes"
+    if not compare_embeddings:
+        print("Benchmarking with default embedding type ONLY ('nomic-embed-text').")
     compare_models = input("\nDo you want to compare multiple LLMs? (yes/no): ").strip().lower() == "yes"
     if not compare_models:
-        print("Benchmarking with mistral:latest model ONLY.")
+        print("Benchmarking with default LLM model ONLY ('mistral:latest').")
     compare_prompts = input("\nDo you want to compare multiple system prompts? (yes/no): ").strip().lower() == "yes"
     if not compare_prompts:
         print("Benchmarking with default system prompt ONLY ('You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say 'I don't know'.').")
-    return compare_models, compare_prompts
 
+    return compare_models, compare_prompts, compare_vdbs, compare_embeddings
 
-def compare_llms_and_prompts(query, context_results, model_names, compare_models, compare_prompts, output_file="query_results.csv"):
-    """ Compare multiple LLMs and save results to a CSV file."""
+# Define function to compare multiple variables and save results
+def compare_all(query, context_results, model_names, compare_models, vdb_names, compare_vdbs, embedding_names, compare_embeddings, compare_prompts, output_file="query_results.csv"):
+    """ Compare multiple LLMs, prompts, vector databases, and embedding types and save results to a CSV file."""
+    if compare_models:
+        mods_to_test = input(
+            f"Which models of: {model_names} would you like to compare? Input separated by /, or enter for all. "
+            ).split("/")
+        models_to_test = mods_to_test if mods_to_test != [''] else model_names
+    else:
+        models_to_test = [model_names[0]]
 
-    # Determine variations based on user choices
-    models_to_test = model_names if compare_models else [model_names[0]]
-    system_prompts = SYSTEM_PROMPT_VARIATIONS if compare_prompts else [SYSTEM_PROMPT_VARIATIONS[0]]
+    if compare_embeddings:
+        embs_to_test = input(
+            f"Which embedding types of: {embedding_names} would you like to compare? Input separated by /, or enter for all. "
+        ).split("/")
+        embeddings_to_test = embs_to_test if embs_to_test != [''] else embedding_names
+    else:
+        embeddings_to_test = [embedding_names[0]]
+
+    if compare_vdbs:
+        vdbs_to_test = input(
+            f"Which vector database types of: {vdb_names} would you like to compare? Input separated by /, or enter for all. "
+        ).split("/")
+        vectordbs_to_test = vdbs_to_test if vdbs_to_test != [''] else vdb_names
+    else:
+        vectordbs_to_test = [vdb_names[0]]
+
+    if compare_prompts:
+        sys_prompts = input(
+            f"Which system prompt of: {SYSTEM_PROMPT_VARIATIONS} would you like to compare? Input separated by / or enter for all. "
+        ).split("/") or SYSTEM_PROMPT_VARIATIONS
+        system_prompts = sys_prompts if sys_prompts != [''] else SYSTEM_PROMPT_VARIATIONS
+    else:
+        system_prompts = [SYSTEM_PROMPT_VARIATIONS[0]]
 
     results = []
 
     for model_name in models_to_test:
         for system_prompt in system_prompts:
-            response, response_time, memory_used = generate_rag_response(
-                query, context_results, model_name, system_prompt
-            )
+            for vdb_name in vectordbs_to_test:
+                for embedding_type in embeddings_to_test:
+                    response, response_time, memory_used = generate_rag_response(
+                    query, context_results, model_name, system_prompt
+                    )
 
-            results.append({
-                "LLM": model_name,
-                "System Prompt": system_prompt,
-                "Speed (s)": round(response_time, 3),
-                "Memory (MB)": round(memory_used, 3),
-                "Response": response
-            })
-
-            print(f"Tested {model_name} with system prompt '{system_prompt}' "
-              f"in {response_time:.3f}s, using {memory_used:.3f}MB memory.")
+                    results.append({
+                        "LLM": model_name,
+                        "Vector DB": vdb_name,
+                        "Embedding Type": embedding_type,
+                        "System Prompt": system_prompt,
+                        "Speed (s)": round(response_time, 3),
+                        "Memory (MB)": round(memory_used, 3),
+                        "Response": response
+                        })
 
     # Check if the output file ends with ".csv"
     if not output_file.endswith(".csv"):
@@ -256,108 +327,33 @@ def compare_llms_and_prompts(query, context_results, model_names, compare_models
         output_file += ".csv"  # append ".csv" if not already present
 
     # Save results to CSV
-    with open(output_file, "w", newline="", encoding="utf-8") as csvfile:
-        fieldnames = ["LLM", "System Prompt", "Speed (s)", "Memory (MB)", "Response"]
+    with open(output_file, "a", newline="", encoding="utf-8") as csvfile:
+        fieldnames = ["LLM", "Vector DB", "Embedding Type", "System Prompt", "Speed (s)", "Memory (MB)", "Response"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
+
+        if csvfile.tell() == 0:
+            writer.writeheader()
+        
         writer.writerows(results)
 
+    print(f"\nCompared models: {models_to_test} \nCompared prompts: {system_prompts}\nCompared embeddings: {embeddings_to_test} \nCompared vector databases: {vectordbs_to_test}")
     print(f"\nResults saved to {output_file}")
 
+# Define function to check validity of a user's input
+def check_validity(user_input, acceptable_list):
+    """ Check the validity of a user's input. Supports both single selections and multiple comma-separated selections.
+    Handles cases where input is already a list."""
+    # If user_input is already a list, just validate each item in the list
+    if isinstance(user_input, list):
+        invalid_selections = [s for s in user_input if s not in acceptable_list]
+    else:
+        # Split input if multiple values are provided
+        selections = [s.strip() for s in user_input.split(",")]
+        invalid_selections = [s for s in selections if s not in acceptable_list]
 
-def interactive_search():
-    """Interactive search interface."""
-    print("🔍 RAG Search Interface")
-    print("Type 'exit' to quit")
+    if invalid_selections:
+        print(f"Invalid entries: {', '.join(invalid_selections)}")
+        new_input = input(f"Please choose from: {acceptable_list}: ")
+        return check_validity(new_input, acceptable_list) # Recursively prompt again
 
-    while True:
-        query = input("\nEnter your search query: ")
-        if query.lower() == "exit":
-            break
-
-        # Search for relevant embeddings given choice of vector db
-        collection_choice = input("\nWhat vector database would you like to use? (redis/chroma/mongo): ").strip().lower()
-        context_results = search_embeddings(query, collection=collection_choice)
-
-        benchmark_choice = input(
-            "\nDo you want to compare multiple LLMs (mistral:latest, gemma3:1b, and llama3.2) and/or system prompts? (yes/no): ").strip().lower()
-
-        if benchmark_choice == "yes":
-            compare_models, compare_prompts = get_user_preferences()
-
-            # Check if both compare_models and compare_prompts are 'no'
-            if not compare_models and not compare_prompts:
-                print(
-                    "\nYou did not select the proper criteria for comparing multiple LLMs and/or system prompts. One LLM and one prompt will be used instead.")
-                # Execute the else code: select the default LLM and prompt without benchmarking
-                model_name = input(
-                    "\nEnter the LLM to use (mistral:latest, gemma3:1b, or llama3.2): ").strip() or "mistral:latest"
-                print("\nAvailable system prompts:")
-                for i, prompt in enumerate(SYSTEM_PROMPT_VARIATIONS):
-                    print(f"{i + 1}. {prompt}")
-                prompt_index = input(
-                    f"Select a system prompt (1-{len(SYSTEM_PROMPT_VARIATIONS)}) or press Enter to use the first: ").strip()
-                system_prompt = SYSTEM_PROMPT_VARIATIONS[int(prompt_index) - 1] if prompt_index.isdigit() and 1 <= int(
-                    prompt_index) <= len(SYSTEM_PROMPT_VARIATIONS) else SYSTEM_PROMPT_VARIATIONS[0]
-            else:
-                filename = input(
-                    "\nBenchmarking results will be stored in a .csv file for easy comparison. What would you like to name the file? ")
-                # Define models to benchmark
-                models_to_test = ["mistral:latest", "gemma3:1b", "llama3.2"]  # Add more models as needed
-                compare_llms_and_prompts(query, context_results, models_to_test, compare_models, compare_prompts, output_file=filename)
-
-                # Ask user which model they want for the final response
-                model_name = input(
-                    "Which model do you want to use for the final response? (mistral:latest, gemma3:1b, or llama3.2) ").strip() or "mistral:latest"
-
-                # Let user choose a system prompt if they are benchmarking prompts
-                print("\nAvailable system prompts:")
-                for i, prompt in enumerate(SYSTEM_PROMPT_VARIATIONS):
-                    print(f"{i + 1}. {prompt}")
-                prompt_index = input(
-                    f"Select a system prompt (1-{len(SYSTEM_PROMPT_VARIATIONS)}) or press Enter to use the first: ").strip()
-                system_prompt = SYSTEM_PROMPT_VARIATIONS[int(prompt_index) - 1] if prompt_index.isdigit() and 1 <= int(
-                    prompt_index) <= len(SYSTEM_PROMPT_VARIATIONS) else SYSTEM_PROMPT_VARIATIONS[0]
-        else:
-            model_name = input(
-                "\nEnter the LLM to use (mistral:latest, gemma3:1b, or llama3.2): ").strip() or "mistral:latest"
-            print("\nAvailable system prompts:")
-            for i, prompt in enumerate(SYSTEM_PROMPT_VARIATIONS):
-                print(f"{i + 1}. {prompt}")
-            prompt_index = input(
-                f"Select a system prompt (1-{len(SYSTEM_PROMPT_VARIATIONS)}) or press Enter to use the first: ").strip()
-            system_prompt = SYSTEM_PROMPT_VARIATIONS[int(prompt_index) - 1] if prompt_index.isdigit() and 1 <= int(
-                prompt_index) <= len(SYSTEM_PROMPT_VARIATIONS) else SYSTEM_PROMPT_VARIATIONS[0]
-
-            # Generate the final response with the chosen model
-        final_response, _, _ = generate_rag_response(query, context_results, model_name=model_name,
-                                                     system_prompt=system_prompt)
-
-        print("\n--- Final Response ---")
-        print(final_response)
-
-
-# def store_embedding(file, page, chunk, embedding):
-#     """
-#     Store an embedding in Redis using a hash with vector field.
-
-#     Args:
-#         file (str): Source file name
-#         page (str): Page number
-#         chunk (str): Chunk index
-#         embedding (list): Embedding vector
-#     """
-#     key = f"{file}_page_{page}_chunk_{chunk}"
-#     redis_client.hset(
-#         key,
-#         mapping={
-#             "embedding": np.array(embedding, dtype=np.float32).tobytes(),
-#             "file": file,
-#             "page": page,
-#             "chunk": chunk,
-#         },
-#     )
-
-
-if __name__ == "__main__":
-    interactive_search()
+    return user_input if isinstance(user_input, list) else selections # Return list if multiple, else single value
