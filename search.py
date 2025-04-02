@@ -39,6 +39,7 @@ INDEX_NAME = "embedding_index"
 DOC_PREFIX = "doc:"
 DISTANCE_METRIC = "COSINE"
 
+
 # Define sample system prompts for comparison
 SYSTEM_PROMPT_VARIATIONS = [
     "You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say 'I don't know'.",
@@ -48,6 +49,36 @@ SYSTEM_PROMPT_VARIATIONS = [
     "You are a concise and direct AI, providing brief answers."
 ]
 
+# Define function to check validity of a user's input
+def check_validity(user_input, acceptable_list, system=False):
+    """ Check the validity of a user's input. Supports both single selections and multiple comma-separated selections.
+    Handles cases where input is already a list."""
+    # If user_input is already a list, just validate each item in the list
+    if isinstance(user_input, list):
+        invalid_selections = [s for s in user_input if s not in acceptable_list]
+    else:
+        # Split input if multiple values are provided
+        selections = [s.strip() for s in user_input.split(",")]
+        invalid_selections = [s for s in selections if s not in acceptable_list]
+
+    if invalid_selections:
+        if not system:
+            print(f"Invalid entries: {', '.join(invalid_selections)}")
+            new_input = input(f"Please choose from: {acceptable_list}: ")
+            return check_validity(new_input, acceptable_list) # Recursively prompt again
+        else:
+            print(f"Invalid entries: {', '.join(invalid_selections)}")
+            for i, prompt in enumerate(SYSTEM_PROMPT_VARIATIONS):
+                print(f"{i + 1}. {prompt}")
+            prompt_index = input(
+                f"Select a system prompt (1-{len(SYSTEM_PROMPT_VARIATIONS)}) or press Enter to use the first: ").strip()
+            new_input = SYSTEM_PROMPT_VARIATIONS[int(prompt_index) - 1] if prompt_index.isdigit() and 1 <= int(
+                prompt_index) <= len(SYSTEM_PROMPT_VARIATIONS) else SYSTEM_PROMPT_VARIATIONS[0]
+            
+            return check_validity(new_input, acceptable_list, True) # Recursively prompt again
+
+    return user_input if isinstance(user_input, list) else selections[0] # Return list if multiple, else single value
+    
 # Define function to generate an embedding using nomic-embed-text, all-MiniLM-L6-v2, or all-mpnet-base-v2
 def get_embedding(text: str, model: str="nomic-embed-text") -> list:
     # Access through ollama (nomic-embed) or SentenceTransformer(other)
@@ -151,8 +182,7 @@ def search_embeddings(query, emb_type="nomic-embed-text", collection="redis", to
         try:
             candidates = mongo_collection.count_documents({})
 
-            # Create a vector search index in Atlas: 
-                # search indexes > create new > db: db, collection: mongoCollection, name: pracB_searchindex, type: vector, distance: euclidean
+            # Extract the results
             results = db.mongoCollection.aggregate([
                 {
                     "$vectorSearch": {
@@ -279,6 +309,9 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
             f"Which models of: {model_names} would you like to compare? Input separated by /, or enter for all. "
             ).split("/")
         models_to_test = mods_to_test if mods_to_test != [''] else model_names
+        # Ensure the entry is valid
+        models_to_test = check_validity(models_to_test, model_names)
+
     else:
         models_to_test = [model_names[0]]
 
@@ -287,6 +320,9 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
             f"Which embedding types of: {embedding_names} would you like to compare? Input separated by /, or enter for all. "
         ).split("/")
         embeddings_to_test = embs_to_test if embs_to_test != [''] else embedding_names
+
+        # Ensure the entry is valid
+        embeddings_to_test = check_validity(embeddings_to_test, embedding_names)
     else:
         embeddings_to_test = [embedding_names[0]]
 
@@ -295,6 +331,9 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
             f"Which vector database types of: {vdb_names} would you like to compare? Input separated by /, or enter for all. "
         ).split("/")
         vectordbs_to_test = vdbs_to_test if vdbs_to_test != [''] else vdb_names
+        
+        # Ensure the entry is valid
+        vectordbs_to_test = check_validity(vdbs_to_test, vdb_names)
     else:
         vectordbs_to_test = [vdb_names[0]]
 
@@ -303,6 +342,8 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
             f"Which system prompt of: {SYSTEM_PROMPT_VARIATIONS} would you like to compare? Input separated by / or enter for all. "
         ).split("/") or SYSTEM_PROMPT_VARIATIONS
         system_prompts = sys_prompts if sys_prompts != [''] else SYSTEM_PROMPT_VARIATIONS
+        # Ensure the entry is valid
+        system_prompts = check_validity(system_prompts, SYSTEM_PROMPT_VARIATIONS)
     else:
         system_prompts = [SYSTEM_PROMPT_VARIATIONS[0]]
 
@@ -378,23 +419,3 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
 
     print(f"\nCompared models: {models_to_test} \nCompared prompts: {system_prompts}\nCompared embeddings: {embeddings_to_test} \nCompared vector databases: {vectordbs_to_test}")
     print(f"\nResults saved to {output_file}")
-
-# Define function to check validity of a user's input
-def check_validity(user_input, acceptable_list):
-    """ Check the validity of a user's input. Supports both single selections and multiple comma-separated selections.
-    Handles cases where input is already a list."""
-    # If user_input is already a list, just validate each item in the list
-    if isinstance(user_input, list):
-        invalid_selections = [s for s in user_input if s not in acceptable_list]
-    else:
-        # Split input if multiple values are provided
-        selections = [s.strip() for s in user_input.split(",")]
-        invalid_selections = [s for s in selections if s not in acceptable_list]
-
-    if invalid_selections:
-        print(f"Invalid entries: {', '.join(invalid_selections)}")
-        new_input = input(f"Please choose from: {acceptable_list}: ")
-        return check_validity(new_input, acceptable_list) # Recursively prompt again
-
-    return user_input if isinstance(user_input, list) else selections[0] # Return list if multiple, else single value
-    
