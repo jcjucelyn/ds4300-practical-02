@@ -23,7 +23,7 @@ With both Ollama and Redis running, we are now ready to begin running the code!
 With all the necessary packages installed and applications running, we can begin ingesting documents. To do so, open the `ingest.py` file in the project repository. The main purpose of
 this file is to evaluate different chunking strategies to analyze their impact on retrieval performance. Before running the script, ensure Redis, MongoDB, and ChromaDB are running:
 * Redis: Start a Redis server on port 6380
-* MongoDB: Ensure your MongoDB Atlas or local instance is configured correctly (We have pre-configured a user login and password in the file. If you have your own account you would like to use, feel free to replace the provided 'user' and 'pwd' variables).
+* MongoDB: Ensure your MongoDB Atlas or local instance is configured correctly (You will need to replace the "user" and "pwd" variables in lines 26 and 27 respectively, as well as adjusting the CONNECTION_STR in line 29 to match your Atlas cluster).
 * ChromaDB: No additional setup is required
 
 To run the script, either click the 'run' button in your IDE or type the following in the terminal: 
@@ -50,7 +50,7 @@ Now that all documents have been ingested and indexed using an embedding type an
 facilitated by `driver.py` which, as the name suggests, is a driver Python script to execute various versions of the indexing pipeline and to collect important data about the process (memory, time, etc).
 We will ultimately use this data to make a recommendation for which pipeline works best as we compare various pipeline performances by modifying different variables. 
 
-To initiate the RAG search interface, open the `driver.py` file in the project repository. Once again, before running the script, ensure Redis, MongoDB, and ChromaDB are running.
+To initiate the RAG search interface, open the `driver.py` file in the project repository. Once again, before running the script, ensure Redis, MongoDB, and ChromaDB are running. Redis and ChromaDB do not need additional adjustments, but MongoDB is using Read-Only permissions for the creator's Atlas Cluster, and thus will need to be changed in `search.py`, lines 27-29, if you have ingested the files and want to use your own.
 
 To run the script, either click the 'run' button in your IDE or type the following in the terminal: 
 ```bash
@@ -59,7 +59,7 @@ python driver.py
 This will launch an interactive search interface where you can enter queries and retrieve relevant documents from stored embeddings.
 
 To perform a search, enter the search query when prompted. The system will then ask you if you would like to compare one or more of the following: LLMs, system prompts, vector databases, or embedding types.
-If you enter 'yes', you will be prompted to note which variables you would like to compare and enter a filename for the .csv results file that will be generated in the project repository folder.
+If you enter 'yes', you will be prompted to decide whether you would like to return a response to your query in addition to the comparison file. You will then note which variables you would like to compare and enter a filename for the .csv results file that will be generated in the project repository folder. After the results file is created, if you answered 'yes' to the response, you will be prompted to enter the LLM, system prompt, vector database, and embedding type you would like to use for your search. The search is then executed using the selected variables and the final response is returned.
 If you enters 'no', you will be prompted to enter the LLM, system prompt, vector database, and embedding type you would like to use for your search. The search is then executed using the selected variables
 and the final response is returned.
 
