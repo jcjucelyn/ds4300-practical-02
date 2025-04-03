@@ -14,16 +14,29 @@ pip install -r requirements.txt
 This ensures the additional packages listed in the `requirements.txt` file are installed on your machine for use in running the project scripts. 
 
 **Important note: You will also need to ensure that both Ollama and Redis are running in order to run our program.** 
-* Ollama is listed in the `requirements.txt ` file, so it should have already been installed as an application on your machine; open the application for use in the project code.
+* Ollama is listed in the `requirements.txt` file, so it should have already been installed as an application on your machine; open the application for use in the project code.
 * We will use Docker Desktop to ensure Redis is running. If you have not already, create a container for Redis/Redis-Stack using the directions given in class and start it up in Docker Desktop before executing any code in the repository. This is important to ensure you do not get an error! **Take note of the port number you assign to the container as it will be needed later.**
+* For MongoDB, you will need to create a cluster in Atlas (Cluster0 for ours) and connect to it through MongoDBCompass. Atlas will walk you through the steps if needed.
 
-With both Ollama and Redis running, we are now ready to begin running the code!
+With Ollama, Redis, and Compass running, we are now ready to begin running the code!
 
 ## Step 1: Ingesting the Documents
 With all the necessary packages installed and applications running, we can begin ingesting documents. To do so, open the `ingest.py` file in the project repository. The main purpose of
 this file is to evaluate different chunking strategies to analyze their impact on retrieval performance. Before running the script, ensure Redis, MongoDB, and ChromaDB are running:
 * Redis: Start a Redis server on port 6380
-* MongoDB: Ensure your MongoDB Atlas or local instance is configured correctly (You will need to replace the "user" and "pwd" variables in lines 26 and 27 respectively, as well as adjusting the CONNECTION_STR in line 29 to match your Atlas cluster).
+* MongoDB: Ensure your MongoDB Atlas or local instance is configured correctly (You will need to replace the "user" and "pwd" variables in lines 26 and 27 respectively, as well as adjusting the CONNECTION_STR in line 29 to match your Atlas cluster after creation). Create an Atlas Search Index in your cluster by going to: left-hand side bar > "Atlas Search" > "Create Search Index" (green button in the top right) and populate the values as follows, clicking "Next" and "Create Vector Search Index" when prompted:
+    * Search Type: Vector Search
+    * Index Name and Data Source
+        * Index Name: pracB_searchindex
+        * Database & Collection: mongoCollection 
+        * Configuration Method: Visual Editor
+    * Vector Field
+        * Path: embedding
+        * Number of Dimensions: 768
+        * Similarity Method: Cosine
+    * Filter Field
+        * Path: leave blank
+
 * ChromaDB: No additional setup is required
 
 To run the script, either click the 'run' button in your IDE or type the following in the terminal: 
@@ -60,10 +73,10 @@ This will launch an interactive search interface where you can enter queries and
 
 To perform a search, enter the search query when prompted. The system will then ask you if you would like to compare one or more of the following: LLMs, system prompts, vector databases, or embedding types.
 If you enter 'yes', you will be prompted to decide whether you would like to return a response to your query in addition to the comparison file. You will then note which variables you would like to compare and enter a filename for the .csv results file that will be generated in the project repository folder. After the results file is created, if you answered 'yes' to the response, you will be prompted to enter the LLM, system prompt, vector database, and embedding type you would like to use for your search. The search is then executed using the selected variables and the final response is returned.
-If you enters 'no', you will be prompted to enter the LLM, system prompt, vector database, and embedding type you would like to use for your search. The search is then executed using the selected variables
+If you enter 'no', you will be prompted to enter the LLM, system prompt, vector database, and embedding type you would like to use for your search. The search is then executed using the selected variables
 and the final response is returned.
 
-If at any time you would like to leave the RAG search interface, you can simply type 'exit' and the system will be terminated. You can ask the system as many questions as you would like while in the RAG search interface system.
+If at any time you would like to leave the RAG search interface, you can simply type 'exit' when prompted and the system will be terminated, or ctrl+c. You can ask the system as many questions as you would like while in the RAG search interface system.
 
 You can modify the available LLMs, embedding types, vector databases, and system prompts in the script as needed (found in the 'model_options', 'embedding_options', 'vectordb_options', and 'SYSTEM_PROMPT_VARIATIONS' variables, respectively).
 
@@ -84,7 +97,7 @@ After completing this step, we have successfully built a local RAG system that a
 Feel free to ask the RAG system any questions you may have about DS4300 content! 
 
 ## Other Project Files
-You may have noticed some folders/files were seemingly not used or mentioned in this guide. This includes the `.idea` folder, the `__pycache__` folder, and the `.DS_Store` file. While not explicitly mentioned, all of these files may be important in ensuring the project files run successfully behind the scenes. Therefore, be sure they are also properly loaded when loading in the project repository and do not delete them!
+You may have noticed some folders/files were seemingly not used or mentioned in this guide. This includes the `.idea` folder, the `__pycache__` folder, and the `.DS_Store` file. While not explicitly mentioned, all of these files may be important in ensuring the project files run successfully behind the scenes. Therefore, be sure they are also properly loaded when loading in the project repository and do not delete them! We also uploaded .csv files for each user question we developed in order to quantitatively support our pipeline recommendation in the slide deck (`question1.csv`, `question2.csv`, `question3.csv`, `question4.csv`, `question5.csv`). Nothing needs to be executed in these files, but they are included in the repository for those who may be interested.
 
 ## Thank You
 Thank you for reaching the end of this guide on how to execute the files within team jo-fi's project repository for

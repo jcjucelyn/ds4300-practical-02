@@ -72,9 +72,14 @@ def interactive_search():
             print("\n----------\nThe following questions are for generating the answer to your query (select ONE option only):\n----------\n")
             # Search for relevant embeddings given choice of vector db
             collection_choice = input(
-                "What vector database would you like to use for answer generation? (redis/chroma/mongo): ")
+                "\nWhat vector database would you like to use for answer generation? (redis/chroma/mongo): ")
+            # Ensure the entry is valid
+            collection_choice = check_validity(collection_choice, vectordb_options)
+
             embedding_choice = input(
                 "\nWhat embedding type would you like to use for answer generation? (nomic-embed-text, all-MiniLM-L6-v1, all-mpnet-base-v2): ")
+            # Ensure the entry is valid
+            embedding_choice = check_validity(embedding_choice, embedding_options)
 
             if collection_choice == "redis" or collection_choice == "mongo":
                 context_results = search_embeddings(query, emb_type=embedding_choice, collection=collection_choice)
@@ -128,6 +133,9 @@ def interactive_search():
                 f"Select a system prompt (1-{len(SYSTEM_PROMPT_VARIATIONS)}) or press Enter to use the first: ").strip()
             system_prompt = SYSTEM_PROMPT_VARIATIONS[int(prompt_index) - 1] if prompt_index.isdigit() and 1 <= int(
                 prompt_index) <= len(SYSTEM_PROMPT_VARIATIONS) else SYSTEM_PROMPT_VARIATIONS[0]
+
+            # Check validity
+            system_prompt = check_validity(prompt_index, [str(i+1) for i,prompt in enumerate(SYSTEM_PROMPT_VARIATIONS)], True)
 
             print("\nLoading...\n")
 
