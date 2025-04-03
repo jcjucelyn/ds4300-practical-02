@@ -305,7 +305,7 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
     # Determine variations based on user choices, inputted separated by / or all (enter)
     if compare_models:
         mods_to_test = input(
-            f"\nWhich models of: {model_names} would you like to compare? Input separated by /, or enter for all. "
+            f"\nWhich models of: {model_names} would you like to compare? Input separated by /, or press Enter for all. "
             ).split("/")
         models_to_test = mods_to_test if mods_to_test != [''] else model_names
         # Ensure the entry is valid
@@ -316,7 +316,7 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
 
     if compare_embeddings:
         embs_to_test = input(
-            f"\nWhich embedding types of: {embedding_names} would you like to compare? Input separated by /, or enter for all. "
+            f"\nWhich embedding types of: {embedding_names} would you like to compare? Input separated by /, or press Enter for all. "
         ).split("/")
         embeddings_to_test = embs_to_test if embs_to_test != [''] else embedding_names
 
@@ -327,7 +327,7 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
 
     if compare_vdbs:
         vdbs_to_test = input(
-            f"\nWhich vector database types of: {vdb_names} would you like to compare? Input separated by /, or enter for all. "
+            f"\nWhich vector database types of: {vdb_names} would you like to compare? Input separated by /, or press Enter for all. "
         ).split("/")
         vectordbs_to_test = vdbs_to_test if vdbs_to_test != [''] else vdb_names
 
@@ -337,10 +337,28 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
         vectordbs_to_test = [vdb_names[0]]
 
     if compare_prompts:
-        sys_prompts = input(
-            f"Which system prompt of: {SYSTEM_PROMPT_VARIATIONS} would you like to compare? Input separated by / or enter for all. "
-        ).split("/") or SYSTEM_PROMPT_VARIATIONS
-        system_prompts = sys_prompts if sys_prompts != [''] else SYSTEM_PROMPT_VARIATIONS
+        # Print out available system prompts with numbers
+        print("\nAvailable system prompts:")
+        for i, prompt in enumerate(SYSTEM_PROMPT_VARIATIONS):
+            print(f"{i + 1}. {prompt}")
+
+        # Ask the user to select system prompts
+        sys_prompts_input = input(
+            f"\nEnter the numbers of the system prompts you'd like to compare. Input separated by /, or press Enter for all. "
+        ).strip()
+
+        # Process user input
+        if sys_prompts_input:
+            selected_indices = sys_prompts_input.split("/")
+            try:
+                system_prompts = [SYSTEM_PROMPT_VARIATIONS[int(index) - 1] for index in selected_indices if
+                                  index.isdigit() and 1 <= int(index) <= len(SYSTEM_PROMPT_VARIATIONS)]
+            except IndexError:
+                print("Invalid selection. Using all system prompts.")
+                system_prompts = SYSTEM_PROMPT_VARIATIONS
+        else:
+            system_prompts = SYSTEM_PROMPT_VARIATIONS  # Default to all if Enter is pressed
+
         # Ensure the entry is valid
         system_prompts = check_validity(system_prompts, SYSTEM_PROMPT_VARIATIONS)
     else:
