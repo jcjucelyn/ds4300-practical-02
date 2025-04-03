@@ -341,13 +341,13 @@ def main():
     csv_filename = "chunking_results.csv"
 
     # Iterate through chunks (storing files in pre-defined 'Files' folder in the project; can be changed by user if necessary)
-    for chunk_size, overlap in CHUNKING_STRATEGIES:
-        chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("./Files/", chunk_size, overlap, csv_filename, coll="mongo")
-        results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
+    # for chunk_size, overlap in CHUNKING_STRATEGIES:
+    #     chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("./Files/", chunk_size, overlap, csv_filename, coll="mongo")
+    #     results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
 
     # Iterate through chunks
     for chunk_size, overlap in CHUNKING_STRATEGIES:
-        chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("./Files/", chunk_size, overlap, csv_filename, coll="chroma")
+        chunk_size, overlap, time_taken, memory_used, num_chunks = process_pdfs("./Files/", chunk_size, overlap, csv_filename, coll="redis")
         results.append([chunk_size, overlap, time_taken, memory_used, num_chunks])
 
     print("\n---Done processing PDFs---\n")
