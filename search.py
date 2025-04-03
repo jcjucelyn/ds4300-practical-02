@@ -41,11 +41,11 @@ DISTANCE_METRIC = "COSINE"
 
 # Define sample system prompts for comparison
 SYSTEM_PROMPT_VARIATIONS = [
-    "You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say 'I don't know'.",
-    "You are an expert in technical writing and software engineering.",
-    "You are a professor explaining concepts to a student.",
-    "You are a creative storyteller.",
-    "You are a concise and direct AI, providing brief answers."
+    'You are a helpful AI assistant. Use the following context to answer the query as accurately as possible. If the context is not relevant to the query, say "I do not know".',
+    'You are an expert in technical writing and software engineering.',
+    'You are a professor explaining concepts to a student.',
+    'You are a creative storyteller.',
+    'You are a concise and direct AI, providing brief answers.'
 ]
 
 # Define function to generate an embedding using nomic-embed-text, all-MiniLM-L6-v2, or all-mpnet-base-v2
@@ -276,7 +276,7 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
     # Determine variations based on user choices, inputted separated by / or all (enter)
     if compare_models:
         mods_to_test = input(
-            f"Which models of: {model_names} would you like to compare? Input separated by /, or enter for all. "
+            f"\nWhich models of: {model_names} would you like to compare? Input separated by /, or enter for all. "
             ).split("/")
         models_to_test = mods_to_test if mods_to_test != [''] else model_names
     else:
@@ -284,7 +284,7 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
 
     if compare_embeddings:
         embs_to_test = input(
-            f"Which embedding types of: {embedding_names} would you like to compare? Input separated by /, or enter for all. "
+            f"\nWhich embedding types of: {embedding_names} would you like to compare? Input separated by /, or enter for all. "
         ).split("/")
         embeddings_to_test = embs_to_test if embs_to_test != [''] else embedding_names
     else:
@@ -292,17 +292,30 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
 
     if compare_vdbs:
         vdbs_to_test = input(
-            f"Which vector database types of: {vdb_names} would you like to compare? Input separated by /, or enter for all. "
+            f"\nWhich vector database types of: {vdb_names} would you like to compare? Input separated by /, or enter for all. "
         ).split("/")
         vectordbs_to_test = vdbs_to_test if vdbs_to_test != [''] else vdb_names
     else:
         vectordbs_to_test = [vdb_names[0]]
 
     if compare_prompts:
-        sys_prompts = input(
-            f"Which system prompt of: {SYSTEM_PROMPT_VARIATIONS} would you like to compare? Input separated by / or enter for all. "
-        ).split("/") or SYSTEM_PROMPT_VARIATIONS
-        system_prompts = sys_prompts if sys_prompts != [''] else SYSTEM_PROMPT_VARIATIONS
+        print("\nAvailable system prompts:")
+        for i, prompt in enumerate(SYSTEM_PROMPT_VARIATIONS):
+            print(f"{i + 1}. {prompt}")
+
+        sys_prompt_input = input(
+            f"\nWhich system prompts would you like to compare? Enter numbers separated by /, or press Enter for all: "
+        ).strip()
+
+        if sys_prompt_input:
+            try:
+                selected_indices = [int(idx) - 1 for idx in sys_prompt_input.split("/") if idx.isdigit()]
+                system_prompts = [SYSTEM_PROMPT_VARIATIONS[i] for i in selected_indices if
+                                  0 <= i < len(SYSTEM_PROMPT_VARIATIONS)]
+            except ValueError:
+                system_prompts = SYSTEM_PROMPT_VARIATIONS
+        else:
+            system_prompts = SYSTEM_PROMPT_VARIATIONS
     else:
         system_prompts = [SYSTEM_PROMPT_VARIATIONS[0]]
 
@@ -318,8 +331,11 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
             chroma_data = {}
             print(f"Error reading JSON: {e}")
 
-        # Turn Chroma JSON into a collection
-        chroma_collection = chroma_client.create_collection(name="chromaCollection")
+        # Try to get existing Chroma collection or create a new one
+        try:
+            chroma_collection = chroma_client.get_collection(name="chromaCollection")
+        except Exception:
+            chroma_collection = chroma_client.create_collection(name="chromaCollection")
         ids = list(item["id"] for item in chroma_data)
         embs = [item["embedding"] for item in chroma_data]
         metadata = [{"file": item["file"],
@@ -376,7 +392,7 @@ def compare_all(query, model_names, compare_models, vdb_names, compare_vdbs, emb
         
         writer.writerows(results)
 
-    print(f"\nCompared models: {models_to_test} \nCompared prompts: {system_prompts}\nCompared embeddings: {embeddings_to_test} \nCompared vector databases: {vectordbs_to_test}")
+    print(f"Compared models: {models_to_test} \nCompared prompts: {system_prompts}\nCompared embeddings: {embeddings_to_test} \nCompared vector databases: {vectordbs_to_test}")
     print(f"\nResults saved to {output_file}")
 
 # Define function to check validity of a user's input
